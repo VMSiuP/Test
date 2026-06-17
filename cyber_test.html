@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CYBER TEST :: Persecución Digital</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-void:#060810;
+  --bg-panel:#0d1220;
+  --bg-panel-2:#111a2e;
+  --green:#39ff6a;
+  --green-dim:#1f7a3a;
+  --amber:#ffb000;
+  --magenta:#ff2e6c;
+  --cyan:#22e8ff;
+  --cyan-dim:#0d5a66;
+  --text-soft:#a9c9c2;
+  --line:#1c2740;
+  font-size:16px;
+}
+*{box-sizing:border-box;}
+html,body{
+  margin:0;padding:0;
+  background:var(--bg-void);
+  color:var(--text-soft);
+  font-family:'Share Tech Mono', monospace;
+  height:100%;
+  overflow:hidden;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+}
+#app{
+  position:relative;
+  width:100%;
+  height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:
+    radial-gradient(ellipse at 50% -10%, #0c2230 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 110%, #1a0a1f 0%, transparent 60%),
+    var(--bg-void);
+}
+
+/* ---------- CRT / scanline overlay ---------- */
+#crt{
+  position:absolute;inset:0;
+  pointer-events:none;
+  z-index:50;
+  background:repeating-linear-gradient(
+    to bottom,
+    rgba(0,0,0,0) 0px,
+    rgba(0,0,0,0) 2px,
+    rgba(0,0,0,0.18) 3px
+  );
+  mix-blend-mode:multiply;
+  opacity:.55;
+}
+#crt::after{
+  content:'';
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%);
+}
+#flicker{
+  position:absolute;inset:0;
+  z-index:51;
+  pointer-events:none;
+  background:#39ff6a;
+  opacity:0;
+  mix-blend-mode:overlay;
+}
+
+/* ---------- Cabinet frame ---------- */
+#cabinet{
+  position:relative;
+  width:min(96vw, 1100px);
+  height:min(94vh, 720px);
+  background:linear-gradient(160deg,#1a1f2e,#0a0d16 60%);
+  border-radius:18px;
+  padding:14px;
+  box-shadow:
+    0 0 0 2px #2a3350,
+    0 0 60px rgba(34,232,255,0.08),
+    0 30px 60px rgba(0,0,0,.6) inset,
+    0 10px 40px rgba(0,0,0,.7);
+  display:flex;
+  flex-direction:column;
+}
+#screen{
+  position:relative;
+  flex:1;
+  background:#03060c;
+  border-radius:10px;
+  overflow:hidden;
+  border:3px solid #060c18;
+  box-shadow:
+    inset 0 0 90px rgba(0,255,140,0.06),
+    inset 0 0 4px #000;
+}
+.marquee{
+  text-align:center;
+  padding:6px 0 10px;
+  font-family:'Press Start 2P', monospace;
+  font-size:clamp(14px,2.4vw,22px);
+  letter-spacing:2px;
+  color:var(--green);
+  text-shadow:0 0 8px var(--green), 0 0 22px rgba(57,255,106,.5);
+}
+.marquee span{color:var(--magenta); text-shadow:0 0 8px var(--magenta), 0 0 22px rgba(255,46,108,.5);}
+
+/* ---------- Generic screen-view ---------- */
+.view{
+  position:absolute;inset:0;
+  display:none;
+  flex-direction:column;
+  padding:clamp(14px,3vw,34px);
+  overflow-y:auto;
+}
+.view.active{display:flex;}
+
+h1.title{
+  font-family:'Press Start 2P', monospace;
+  font-size:clamp(20px,4.2vw,40px);
+  color:var(--green);
+  text-shadow:0 0 10px rgba(57,255,106,.6);
+  text-align:center;
+  margin:4px 0 6px;
+  letter-spacing:3px;
+}
+h1.title .sub{
+  display:block;
+  font-family:'VT323',monospace;
+  font-size:clamp(12px,2vw,18px);
+  color:var(--cyan);
+  letter-spacing:4px;
+  margin-top:8px;
+  text-shadow:0 0 6px rgba(34,232,255,.6);
+}
+h2.section-title{
+  font-family:'Press Start 2P', monospace;
+  font-size:clamp(12px,2vw,18px);
+  color:var(--amber);
+  text-shadow:0 0 8px rgba(255,176,0,.5);
+  letter-spacing:1px;
+  margin:0 0 14px;
+  text-align:center;
+}
+
+/* blinking insert-coin style prompt */
+.blink{animation:blink 1s steps(2,start) infinite;}
+@keyframes blink{to{visibility:hidden;}}
+
+/* ---------- Buttons ---------- */
+.btn{
+  font-family:'Press Start 2P', monospace;
+  font-size:clamp(10px,1.6vw,14px);
+  color:var(--green);
+  background:linear-gradient(180deg,#0e1a14,#070d0a);
+  border:2px solid var(--green-dim);
+  padding:14px 18px;
+  border-radius:6px;
+  cursor:pointer;
+  text-align:center;
+  letter-spacing:1px;
+  transition:transform .08s ease, box-shadow .15s ease, border-color .15s ease, color .15s ease;
+  box-shadow:0 0 0 rgba(57,255,106,0);
+}
+.btn:hover, .btn:focus-visible{
+  border-color:var(--green);
+  color:#dfffe9;
+  box-shadow:0 0 18px rgba(57,255,106,.45);
+  transform:translateY(-2px);
+}
+.btn:active{transform:translateY(0px) scale(.97);}
+.btn.amber{color:var(--amber); border-color:#7a5200;}
+.btn.amber:hover{border-color:var(--amber); box-shadow:0 0 18px rgba(255,176,0,.45);}
+.btn.magenta{color:var(--magenta); border-color:#7a1638;}
+.btn.magenta:hover{border-color:var(--magenta); box-shadow:0 0 18px rgba(255,46,108,.45);}
+.btn.cyan{color:var(--cyan); border-color:#0d5a66;}
+.btn.cyan:hover{border-color:var(--cyan); box-shadow:0 0 18px rgba(34,232,255,.45);}
+.btn[disabled]{opacity:.35; cursor:not-allowed; filter:grayscale(.6);}
+.btn.selected{
+  border-color:#fff;
+  color:#fff;
+  box-shadow:0 0 22px rgba(255,255,255,.5);
+}
+
+.btn-row{display:flex; gap:10px; flex-wrap:wrap; justify-content:center;}
+
+/* ---------- Grid choice cards (character / city / level) ---------- */
+.choice-grid{
+  display:grid;
+  gap:14px;
+  width:100%;
+  max-width:880px;
+  margin:0 auto;
+}
+.choice-grid.cols-2{grid-template-columns:repeat(2,1fr);}
+.choice-grid.cols-3{grid-template-columns:repeat(3,1fr);}
+@media (max-width:640px){
+  .choice-grid.cols-3{grid-template-columns:repeat(1,1fr);}
+}
+
+.card{
+  background:var(--bg-panel);
+  border:2px solid var(--line);
+  border-radius:10px;
+  padding:14px;
+  cursor:pointer;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:8px;
+  transition:border-color .15s, box-shadow .15s, transform .1s;
+  text-align:center;
+}
+.card:hover{border-color:var(--cyan); box-shadow:0 0 16px rgba(34,232,255,.25); transform:translateY(-2px);}
+.card.selected{border-color:var(--green); box-shadow:0 0 20px rgba(57,255,106,.4);}
+.card .icon-box{width:100%; aspect-ratio:1/1; display:flex; align-items:center; justify-content:center;}
+.card .icon-box svg{width:78%; height:78%;}
+.card .label{font-family:'Press Start 2P', monospace; font-size:clamp(9px,1.3vw,12px); color:var(--text-soft); letter-spacing:1px;}
+.card.selected .label{color:var(--green);}
+.card .desc{font-family:'VT323',monospace; font-size:clamp(11px,1.6vw,14px); color:#6f8a85; line-height:1.3;}
+
+/* ---------- Center column helpers ---------- */
+.col{display:flex; flex-direction:column; align-items:center; gap:18px; width:100%; flex:1; justify-content:center;}
+.stack{display:flex; flex-direction:column; gap:10px; width:100%; align-items:center;}
+
+/* ---------- HUD (gameplay) ---------- */
+#hud{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  padding:8px 4px 14px;
+  font-family:'Press Start 2P', monospace;
+  font-size:clamp(8px,1.3vw,11px);
+  flex-wrap:wrap;
+}
+#hud .hud-block{display:flex; flex-direction:column; gap:4px; align-items:center;}
+#hud .hud-label{color:#5d7d77; font-size:.85em;}
+#hud .hud-value{color:var(--amber); text-shadow:0 0 6px rgba(255,176,0,.5);}
+#lives{display:flex; gap:6px;}
+.life-dot{width:14px;height:14px;border-radius:50%; background:var(--magenta); box-shadow:0 0 8px var(--magenta);}
+.life-dot.lost{background:#2a1019; box-shadow:none; border:1px solid #4a1a26;}
+
+/* progress / distance bar */
+#chase-track{
+  position:relative;
+  width:100%;
+  height:120px;
+  background:
+    linear-gradient(180deg, rgba(13,90,102,.15), transparent 60%),
+    var(--bg-panel-2);
+  border:2px solid var(--line);
+  border-radius:10px;
+  overflow:hidden;
+  margin-bottom:14px;
+  flex-shrink:0;
+}
+#city-skyline{
+  position:absolute; left:0; right:0; bottom:0; height:62%;
+  opacity:.55;
+}
+#road{
+  position:absolute; left:0; right:0; bottom:0; height:34%;
+  background:#0a0f1c;
+  border-top:2px dashed #25324f;
+}
+#road::before{
+  content:'';
+  position:absolute; inset:0;
+  background-image:repeating-linear-gradient(90deg, #1d2b46 0 26px, transparent 26px 52px);
+  background-position-y:bottom;
+  height:4px;
+  top:50%;
+  animation:roadmove 1.1s linear infinite;
+}
+@keyframes roadmove{from{background-position-x:0;}to{background-position-x:-52px;}}
+
+.sprite{
+  position:absolute;
+  bottom:8%;
+  width:54px;height:54px;
+  transition:left 1.1s cubic-bezier(.4,1.4,.4,1);
+  filter:drop-shadow(0 4px 4px rgba(0,0,0,.5));
+}
+#sprite-hero{left:6%;}
+#sprite-villain{left:72%;}
+.sprite.bump{animation:bump .35s ease;}
+@keyframes bump{0%{transform:translateY(0)}40%{transform:translateY(-14px)}100%{transform:translateY(0)}}
+.sprite.flee{animation:flee .5s ease;}
+@keyframes flee{0%{transform:translateX(0)}50%{transform:translateX(18px)}100%{transform:translateX(0)}}
+.sprite.dance{animation:dance .6s ease-in-out infinite;}
+@keyframes dance{0%,100%{transform:translateY(0) rotate(0)}25%{transform:translateY(-8px) rotate(-8deg)}75%{transform:translateY(-8px) rotate(8deg)}}
+.sprite.cheer{animation:cheer .6s ease-in-out infinite;}
+@keyframes cheer{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.sprite.sad{animation:sad 2s ease-in-out infinite;}
+@keyframes sad{0%,100%{transform:translateY(0)}50%{transform:translateY(2px)}}
+
+#distance-meter{
+  display:flex; gap:5px; width:100%; justify-content:center; margin-bottom:6px;
+}
+.dist-cell{
+  width:22px;height:14px;
+  background:#13202e;
+  border:1px solid #233650;
+  border-radius:2px;
+}
+.dist-cell.filled{background:var(--green); box-shadow:0 0 8px var(--green); border-color:var(--green);}
+.dist-cell.danger{background:var(--magenta); box-shadow:0 0 8px var(--magenta); border-color:var(--magenta);}
+
+/* ---------- Question panel ---------- */
+#qpanel{
+  background:var(--bg-panel);
+  border:2px solid var(--cyan-dim);
+  border-radius:10px;
+  padding:16px 18px;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  min-height:0;
+  box-shadow:0 0 24px rgba(34,232,255,.08) inset;
+}
+#qmeta{
+  display:flex; justify-content:space-between; align-items:center;
+  font-family:'Press Start 2P', monospace;
+  font-size:clamp(8px,1.2vw,11px);
+  color:var(--cyan);
+  margin-bottom:10px;
+}
+#qtext{
+  font-family:'VT323', monospace;
+  font-size:clamp(15px,2.1vw,21px);
+  line-height:1.45;
+  color:#e7f5f0;
+  margin-bottom:14px;
+  flex-shrink:0;
+}
+#options{
+  display:flex; flex-direction:column; gap:10px;
+  overflow-y:auto;
+  padding-right:4px;
+}
+.opt{
+  font-family:'Share Tech Mono', monospace;
+  font-size:clamp(12px,1.7vw,15px);
+  background:#0a121f;
+  border:2px solid var(--line);
+  border-radius:7px;
+  padding:11px 14px;
+  cursor:pointer;
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
+  transition:border-color .12s, background .12s, transform .08s;
+  color:var(--text-soft);
+}
+.opt .tag{
+  font-family:'Press Start 2P', monospace;
+  font-size:.85em;
+  color:var(--amber);
+  flex-shrink:0;
+}
+.opt:hover{border-color:var(--cyan); background:#0d1a2c; transform:translateX(2px);}
+.opt.correct{border-color:var(--green); background:rgba(57,255,106,.12); color:#dfffe9; box-shadow:0 0 16px rgba(57,255,106,.3);}
+.opt.wrong{border-color:var(--magenta); background:rgba(255,46,108,.12); color:#ffd9e2; box-shadow:0 0 16px rgba(255,46,108,.3);}
+.opt.disabled{cursor:default; opacity:.6;}
+.opt.locked-correct{border-color:var(--green); background:rgba(57,255,106,.07);}
+
+#feedback-banner{
+  text-align:center;
+  font-family:'Press Start 2P', monospace;
+  font-size:clamp(12px,2vw,18px);
+  padding:10px;
+  margin-top:10px;
+  border-radius:6px;
+  display:none;
+}
+#feedback-banner.show{display:block;}
+#feedback-banner.good{color:var(--green); text-shadow:0 0 10px rgba(57,255,106,.6); background:rgba(57,255,106,.06);}
+#feedback-banner.bad{color:var(--magenta); text-shadow:0 0 10px rgba(255,46,108,.6); background:rgba(255,46,108,.06);}
+
+/* ---------- End screens ---------- */
+#endstage{
+  width:100%; height:200px; position:relative; margin-bottom:14px; flex-shrink:0;
+  border:2px solid var(--line); border-radius:10px; overflow:hidden;
+  background:var(--bg-panel-2);
+}
+#endstage .sprite{bottom:10%;}
+
+.score-box{
+  font-family:'VT323',monospace;
+  font-size:clamp(16px,2.4vw,22px);
+  text-align:center;
+  color:var(--cyan);
+  margin-bottom:6px;
+}
+.score-big{
+  font-family:'Press Start 2P',monospace;
+  font-size:clamp(26px,5vw,46px);
+  text-align:center;
+  margin:6px 0 14px;
+}
+.score-big.win{color:var(--green); text-shadow:0 0 16px rgba(57,255,106,.6);}
+.score-big.lose{color:var(--magenta); text-shadow:0 0 16px rgba(255,46,108,.6);}
+
+#share-canvas-holder{display:none;}
+
+footer.hint{
+  text-align:center;
+  font-family:'VT323',monospace;
+  color:#46625c;
+  font-size:clamp(10px,1.6vw,13px);
+  margin-top:10px;
+  letter-spacing:1px;
+}
+
+/* mute button */
+#mute-btn{
+  position:absolute; top:10px; right:14px; z-index:60;
+  background:rgba(6,10,16,.7);
+  border:1px solid var(--line);
+  color:var(--text-soft);
+  border-radius:50%;
+  width:38px;height:38px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  font-size:16px;
+}
+#mute-btn:hover{border-color:var(--cyan); color:var(--cyan);}
+
+/* scrollbar */
+*::-webkit-scrollbar{width:8px;}
+*::-webkit-scrollbar-track{background:#0a0f1c;}
+*::-webkit-scrollbar-thumb{background:#233650; border-radius:4px;}
+
+@media (max-width:560px){
+  #cabinet{border-radius:10px; padding:8px;}
+  .choice-grid.cols-2{grid-template-columns:1fr;}
+  #chase-track{height:96px;}
+  .sprite{width:40px;height:40px;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <button id="mute-btn" aria-label="Silenciar sonido" title="Silenciar/activar sonido">🔊</button>
+  <div id="cabinet">
+    <div class="marquee">CYBER <span>TEST</span></div>
+    <div id="screen">
+      <div id="crt"></div>
+      <div id="flicker"></div>
+
+      <!-- VIEW: TITLE -->
+      <section class="view active" id="view-title">
+        <div class="col">
+          <h1 class="title">CYBER TEST<span class="sub">PERSECUCIÓN DIGITAL // CONVENIO DE BUDAPEST</span></h1>
+          <svg width="180" height="180" viewBox="0 0 100 100" style="margin:6px 0;">
+            <circle cx="50" cy="50" r="40" fill="none" stroke="#1f7a3a" stroke-width="2" stroke-dasharray="4 4"/>
+            <circle cx="50" cy="50" r="30" fill="none" stroke="#22e8ff" stroke-width="1.5" opacity=".6"/>
+            <path d="M30 60 L42 40 L50 52 L60 32 L72 60" stroke="#39ff6a" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="50" cy="50" r="3" fill="#ff2e6c"/>
+          </svg>
+          <div class="stack">
+            <button class="btn" id="btn-start">▶ INICIAR PERSECUCIÓN</button>
+            <button class="btn cyan" id="btn-howto">? CÓMO JUGAR</button>
+          </div>
+          <p class="blink" style="font-family:'VT323',monospace;color:#46625c;margin-top:6px;">PULSA PARA COMENZAR</p>
+        </div>
+      </section>
+
+      <!-- VIEW: HOWTO -->
+      <section class="view" id="view-howto">
+        <h2 class="section-title">CÓMO JUGAR</h2>
+        <div style="max-width:720px;margin:0 auto;font-family:'VT323',monospace;font-size:clamp(13px,2vw,17px);line-height:1.6;color:#cfe9e2;">
+          <p>🚓 Elige tu agente, la ciudad de persecución y el nivel de dificultad.</p>
+          <p>🧩 El delincuente huye. Cada pregunta correcta del Convenio de Budapest, sus Protocolos, Informes Explicativos y Notas del T-CY te acerca a él.</p>
+          <p>❌ Si fallas una pregunta, el delincuente toma distancia. Si fallas <b>dos</b>, logra escapar y el juego termina.</p>
+          <p>🏁 Responde bien <b>10 preguntas</b> seguidas de margen (sin acumular 2 fallos) y lo atraparás. ¡A prisión!</p>
+          <p>📸 Al final podrás capturar o compartir tu resultado.</p>
+        </div>
+        <div class="btn-row" style="margin-top:18px;">
+          <button class="btn" id="btn-howto-back">← VOLVER</button>
+        </div>
+      </section>
+
+      <!-- VIEW: CHARACTER SELECT -->
+      <section class="view" id="view-character">
+        <h2 class="section-title">1 / 4 — ELIGE TU AGENTE</h2>
+        <div class="choice-grid cols-2" id="character-grid"></div>
+        <div class="btn-row" style="margin-top:18px;">
+          <button class="btn" id="btn-char-back">← ATRÁS</button>
+          <button class="btn" id="btn-char-next" disabled>SIGUIENTE →</button>
+        </div>
+      </section>
+
+      <!-- VIEW: CITY SELECT -->
+      <section class="view" id="view-city">
+        <h2 class="section-title">2 / 4 — ELIGE LA CIUDAD</h2>
+        <div class="choice-grid cols-3" id="city-grid"></div>
+        <div class="btn-row" style="margin-top:18px;">
+          <button class="btn" id="btn-city-back">← ATRÁS</button>
+          <button class="btn" id="btn-city-next" disabled>SIGUIENTE →</button>
+        </div>
+      </section>
+
+      <!-- VIEW: DIFFICULTY SELECT -->
+      <section class="view" id="view-difficulty">
+        <h2 class="section-title">3 / 4 — NIVEL DE DIFICULTAD</h2>
+        <div class="choice-grid cols-3" id="difficulty-grid"></div>
+        <div class="btn-row" style="margin-top:18px;">
+          <button class="btn" id="btn-diff-back">← ATRÁS</button>
+          <button class="btn" id="btn-diff-next" disabled>SIGUIENTE →</button>
+        </div>
+      </section>
+
+      <!-- VIEW: BRIEFING -->
+      <section class="view" id="view-briefing">
+        <h2 class="section-title">4 / 4 — BRIEFING DE MISIÓN</h2>
+        <div class="col" style="gap:10px;">
+          <div id="briefing-card" style="max-width:560px;font-family:'VT323',monospace;font-size:clamp(13px,2vw,17px);line-height:1.6;color:#cfe9e2;text-align:center;border:1px solid var(--line);border-radius:10px;padding:18px;background:var(--bg-panel);"></div>
+          <button class="btn magenta" id="btn-launch" style="margin-top:8px;">🚨 INICIAR CAZA 🚨</button>
+        </div>
+        <div class="btn-row" style="margin-top:14px;">
+          <button class="btn" id="btn-brief-back">← ATRÁS</button>
+        </div>
+      </section>
+
+      <!-- VIEW: GAMEPLAY -->
+      <section class="view" id="view-game">
+        <div id="hud">
+          <div class="hud-block">
+            <span class="hud-label">PREGUNTA</span>
+            <span class="hud-value" id="hud-qnum">1/10</span>
+          </div>
+          <div class="hud-block">
+            <span class="hud-label">VIDAS</span>
+            <span id="lives"><span class="life-dot"></span><span class="life-dot"></span></span>
+          </div>
+          <div class="hud-block">
+            <span class="hud-label">NIVEL</span>
+            <span class="hud-value" id="hud-level">BÁSICO</span>
+          </div>
+          <div class="hud-block">
+            <span class="hud-label">CIUDAD</span>
+            <span class="hud-value" id="hud-city">—</span>
+          </div>
+        </div>
+
+        <div id="chase-track">
+          <svg id="city-skyline" viewBox="0 0 600 100" preserveAspectRatio="none" width="100%" height="100%"></svg>
+          <div id="road"></div>
+          <div class="sprite" id="sprite-hero"></div>
+          <div class="sprite" id="sprite-villain"></div>
+        </div>
+        <div id="distance-meter"></div>
+
+        <div id="qpanel">
+          <div id="qmeta">
+            <span id="qmeta-level">NIVEL: BÁSICO</span>
+            <span id="qmeta-counter">PREGUNTA 1/10</span>
+          </div>
+          <div id="qtext">Cargando...</div>
+          <div id="options"></div>
+          <div id="feedback-banner"></div>
+        </div>
+      </section>
+
+      <!-- VIEW: WIN -->
+      <section class="view" id="view-win">
+        <h2 class="section-title" style="color:var(--green);">¡CASO RESUELTO!</h2>
+        <div id="endstage-win" class="col" style="gap:6px;">
+          <div id="endstage" style="position:relative;"></div>
+        </div>
+        <div class="score-big win">DELINCUENTE CAPTURADO</div>
+        <div class="score-box" id="win-summary"></div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn" id="btn-win-screenshot">📸 CAPTURAR</button>
+          <button class="btn cyan" id="btn-win-share">🔗 COMPARTIR</button>
+          <button class="btn amber" id="btn-win-again">↻ JUGAR OTRA VEZ</button>
+        </div>
+      </section>
+
+      <!-- VIEW: LOSE -->
+      <section class="view" id="view-lose">
+        <h2 class="section-title" style="color:var(--magenta);">EL SOSPECHOSO ESCAPÓ</h2>
+        <div id="endstage-lose" class="col" style="gap:6px;">
+          <div id="endstage2" style="position:relative;"></div>
+        </div>
+        <div class="score-big lose">CASO NO RESUELTO</div>
+        <div class="score-box" id="lose-summary"></div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn" id="btn-lose-screenshot">📸 CAPTURAR</button>
+          <button class="btn cyan" id="btn-lose-share">🔗 COMPARTIR</button>
+          <button class="btn amber" id="btn-lose-again">↻ REINTENTAR</button>
+        </div>
+      </section>
+
+    </div>
+  </div>
+  <footer class="hint">CYBER TEST © Entrenamiento T-CY · Convenio de Budapest, Protocolos e Informes Explicativos</footer>
+</div>
+
+<canvas id="share-canvas" width="1000" height="640" style="display:none;"></canvas>
+
+<script>
+// ============================================================
+// CYBER TEST — Datos de configuración: personajes, ciudades,
+// dificultades y sprites SVG (pixel-art vectorial simple)
+// ============================================================
+
+// ---------- SPRITES (SVG inline, estilo pixel-art retro) ----------
+const SPRITES = {
+  agentM: `
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <rect x="9" y="2" width="6" height="5" fill="#e8b894"/>
+    <rect x="8" y="1" width="8" height="2" fill="#1b2a4a"/>
+    <rect x="9" y="7" width="6" height="1" fill="#0b1320"/>
+    <rect x="7" y="8" width="10" height="6" fill="#1b2a4a"/>
+    <rect x="10" y="9" width="4" height="3" fill="#ffd34d"/>
+    <rect x="6" y="9" width="2" height="5" fill="#1b2a4a"/>
+    <rect x="16" y="9" width="2" height="5" fill="#1b2a4a"/>
+    <rect x="8" y="14" width="3" height="6" fill="#10182c"/>
+    <rect x="13" y="14" width="3" height="6" fill="#10182c"/>
+    <rect x="8" y="20" width="3" height="2" fill="#000"/>
+    <rect x="13" y="20" width="3" height="2" fill="#000"/>
+  </svg>`,
+  agentF: `
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <rect x="9" y="2" width="6" height="5" fill="#caa07a"/>
+    <rect x="8" y="1" width="8" height="2" fill="#2a1a10"/>
+    <rect x="7" y="3" width="2" height="5" fill="#2a1a10"/>
+    <rect x="15" y="3" width="2" height="5" fill="#2a1a10"/>
+    <rect x="9" y="7" width="6" height="1" fill="#0b1320"/>
+    <rect x="7" y="8" width="10" height="6" fill="#3a2a52"/>
+    <rect x="10" y="9" width="4" height="3" fill="#ffd34d"/>
+    <rect x="6" y="9" width="2" height="5" fill="#3a2a52"/>
+    <rect x="16" y="9" width="2" height="5" fill="#3a2a52"/>
+    <rect x="8" y="14" width="3" height="6" fill="#1b1330"/>
+    <rect x="13" y="14" width="3" height="6" fill="#1b1330"/>
+    <rect x="8" y="20" width="3" height="2" fill="#000"/>
+    <rect x="13" y="20" width="3" height="2" fill="#000"/>
+  </svg>`,
+  villain: `
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <rect x="9" y="2" width="6" height="5" fill="#d9b48f"/>
+    <rect x="8" y="6" width="8" height="2" fill="#222"/>
+    <rect x="9" y="7" width="6" height="2" fill="#111"/>
+    <rect x="9" y="7" width="6" height="1" fill="#39ff6a" opacity="0.7"/>
+    <rect x="7" y="9" width="10" height="6" fill="#2b2b2b"/>
+    <rect x="6" y="9" width="2" height="5" fill="#2b2b2b"/>
+    <rect x="16" y="9" width="2" height="5" fill="#2b2b2b"/>
+    <rect x="9" y="9" width="6" height="2" fill="#101010"/>
+    <rect x="8" y="15" width="3" height="6" fill="#1a1a1a"/>
+    <rect x="13" y="15" width="3" height="6" fill="#1a1a1a"/>
+    <rect x="8" y="21" width="3" height="2" fill="#000"/>
+    <rect x="13" y="21" width="3" height="2" fill="#000"/>
+  </svg>`,
+  villainCaged: `
+  <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+    <rect x="9" y="2" width="6" height="5" fill="#d9b48f"/>
+    <rect x="9" y="4" width="6" height="1" fill="#5a1a1a"/>
+    <rect x="7" y="9" width="10" height="6" fill="#2b2b2b"/>
+    <rect x="6" y="9" width="2" height="5" fill="#2b2b2b"/>
+    <rect x="16" y="9" width="2" height="5" fill="#2b2b2b"/>
+    <rect x="8" y="15" width="3" height="6" fill="#1a1a1a"/>
+    <rect x="13" y="15" width="3" height="6" fill="#1a1a1a"/>
+    <rect x="8" y="21" width="3" height="2" fill="#000"/>
+    <rect x="13" y="21" width="3" height="2" fill="#000"/>
+    <g stroke="#9aa7bd" stroke-width="1">
+      <line x1="2" y1="0" x2="2" y2="24"/>
+      <line x1="6" y1="0" x2="6" y2="24"/>
+      <line x1="18" y1="0" x2="18" y2="24"/>
+      <line x1="22" y1="0" x2="22" y2="24"/>
+    </g>
+  </svg>`
+};
+
+// ---------- PERSONAJES ----------
+const CHARACTERS = [
+  {
+    id: "agentM",
+    label: "AGENTE VARGAS",
+    desc: "Fiscal especializado en delitos informáticos. Veterano, metódico.",
+    sprite: SPRITES.agentM
+  },
+  {
+    id: "agentF",
+    label: "AGENTE ROJAS",
+    desc: "Investigadora forense digital. Rápida, observadora.",
+    sprite: SPRITES.agentF
+  }
+];
+
+// ---------- CIUDADES (skyline SVG simplificado por ciudad) ----------
+const CITIES = [
+  {
+    id: "lima",
+    label: "LIMA",
+    desc: "Costa del Pacífico, Perú",
+    skyline: cityRects([18,34,22,46,16,52,28,20,38,24], "#142235")
+  },
+  {
+    id: "madrid",
+    label: "MADRID",
+    desc: "Centro de Europa continental",
+    skyline: cityRects([24,40,18,30,44,20,36,26,18,30], "#1c1830")
+  },
+  {
+    id: "tokyo",
+    label: "TOKIO",
+    desc: "Metrópoli del Pacífico asiático",
+    skyline: cityRects([30,50,20,60,16,44,54,22,38,28], "#101a2e")
+  },
+  {
+    id: "nyc",
+    label: "NUEVA YORK",
+    desc: "Distrito financiero global",
+    skyline: cityRects([40,58,28,64,20,50,46,30,60,24], "#161425")
+  },
+  {
+    id: "berlin",
+    label: "BERLÍN",
+    desc: "Sede histórica del Consejo de Europa",
+    skyline: cityRects([20,30,16,26,34,18,28,22,16,24], "#10202a")
+  },
+  {
+    id: "bogota",
+    label: "BOGOTÁ",
+    desc: "Altiplano andino, Colombia",
+    skyline: cityRects([22,36,18,42,20,30,40,24,18,28], "#172024")
+  }
+];
+
+// Genera una franja de "edificios" (rects) tipo skyline pixelado a partir de alturas
+function cityRects(heights, color){
+  const w = 600, baseY = 100, unitW = w / heights.length;
+  let out = `<rect x="0" y="0" width="${w}" height="${baseY}" fill="transparent"/>`;
+  heights.forEach((h, i) => {
+    const x = i * unitW + unitW * 0.12;
+    const bw = unitW * 0.76;
+    const y = baseY - h;
+    out += `<rect x="${x.toFixed(1)}" y="${y}" width="${bw.toFixed(1)}" height="${h}" fill="${color}"/>`;
+    // ventanitas
+    const rows = Math.floor(h / 8);
+    for(let r=0; r<rows; r++){
+      out += `<rect x="${(x+3).toFixed(1)}" y="${(y+4+r*8).toFixed(1)}" width="3" height="3" fill="#39ff6a" opacity="${(r%2===0)?0.35:0.15}"/>`;
+      out += `<rect x="${(x+bw-6).toFixed(1)}" y="${(y+4+r*8).toFixed(1)}" width="3" height="3" fill="#22e8ff" opacity="${(r%2===0)?0.18:0.3}"/>`;
+    }
+  });
+  return out;
+}
+
+// ---------- DIFICULTADES ----------
+const DIFFICULTIES = [
+  {
+    id: "basico",
+    label: "BÁSICO",
+    desc: "Conceptos y artículos fundamentales del Convenio.",
+    color: "var(--green)"
+  },
+  {
+    id: "intermedio",
+    label: "INTERMEDIO",
+    desc: "Aplicación, alcance y matices procesales.",
+    color: "var(--amber)"
+  },
+  {
+    id: "experto",
+    label: "EXPERTO",
+    desc: "Análisis, doctrina y articulación entre normas.",
+    color: "var(--magenta)"
+  }
+];
+
+// ---------- ICONOS de UI para tarjetas ----------
+const ICONS = {
+  agentM: `<svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="6" rx="1" fill="#39ff6a"/><rect x="6" y="9" width="12" height="9" rx="2" fill="#1b2a4a" stroke="#39ff6a" stroke-width="0.6"/><rect x="10" y="11" width="4" height="3" fill="#ffd34d"/></svg>`,
+  agentF: `<svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="6" rx="1" fill="#22e8ff"/><rect x="6" y="9" width="12" height="9" rx="2" fill="#3a2a52" stroke="#22e8ff" stroke-width="0.6"/><rect x="10" y="11" width="4" height="3" fill="#ffd34d"/></svg>`,
+  city: `<svg viewBox="0 0 24 24"><rect x="3" y="10" width="4" height="11" fill="#1c2740"/><rect x="9" y="5" width="5" height="16" fill="#22384f"/><rect x="16" y="9" width="4" height="12" fill="#1c2740"/><rect x="10" y="8" width="1.4" height="1.4" fill="#39ff6a"/><rect x="12" y="8" width="1.4" height="1.4" fill="#39ff6a"/><rect x="10" y="11" width="1.4" height="1.4" fill="#22e8ff"/></svg>`,
+  diffEasy: `<svg viewBox="0 0 24 24"><rect x="4" y="16" width="4" height="5" fill="#39ff6a"/><rect x="10" y="11" width="4" height="10" fill="#1f7a3a" opacity="0.5"/><rect x="16" y="6" width="4" height="15" fill="#1f7a3a" opacity="0.25"/></svg>`,
+  diffMed: `<svg viewBox="0 0 24 24"><rect x="4" y="13" width="4" height="8" fill="#7a5200" opacity="0.4"/><rect x="10" y="9" width="4" height="12" fill="#ffb000"/><rect x="16" y="6" width="4" height="15" fill="#7a5200" opacity="0.4"/></svg>`,
+  diffHard: `<svg viewBox="0 0 24 24"><rect x="4" y="14" width="4" height="7" fill="#7a1638" opacity="0.4"/><rect x="10" y="10" width="4" height="11" fill="#7a1638" opacity="0.5"/><rect x="16" y="4" width="4" height="17" fill="#ff2e6c"/></svg>`
+};
+
+
+// CYBER TEST — Banco de preguntas (Convenio de Budapest, Protocolos, Informes Explicativos y Notas T-CY)
+const QUESTION_BANKS = {"basico": [{"q": "¿En qué ciudad y año fue adoptado el Convenio sobre la Ciberdelincuencia?", "options": ["Estrasburgo, 2003", "Budapest, 2001", "Varsovia, 2000", "Bruselas, 2002"], "correct": 1}, {"q": "¿Cuál es el número de Serie de Tratados Europeos (STE) del Convenio de Budapest?", "options": ["STE núm. 189", "STE núm. 224", "STE núm. 185", "STE núm. 99"], "correct": 2}, {"q": "Según el Artículo 1 del Convenio, ¿qué se entiende por 'sistema informático'?", "options": ["Todo programa diseñado para ejecutar una función en red", "Todo dispositivo aislado o conjunto de dispositivos interconectados cuya función sea el tratamiento automatizado de datos", "Cualquier dispositivo electrónico que almacene información", "Todo servidor conectado a Internet con capacidad de procesamiento"], "correct": 1}, {"q": "¿Qué organismo elaboró y auspicia el Convenio de Budapest?", "options": ["La Unión Europea", "Las Naciones Unidas", "El Consejo de Europa", "La OCDE"], "correct": 2}, {"q": "¿Cuál de los siguientes es un tipo de dato definido expresamente en el Artículo 1 del Convenio?", "options": ["Datos de localización", "Datos sobre el tráfico", "Datos biométricos", "Datos de contenido cifrado"], "correct": 1}, {"q": "¿Cuál es el delito contemplado en el Artículo 2 del Convenio?", "options": ["Fraude informático", "Falsificación informática", "Acceso ilícito", "Interceptación ilícita"], "correct": 2}, {"q": "El Artículo 3 del Convenio tipifica la interceptación ilícita. ¿A qué tipo de transmisiones se refiere principalmente?", "options": ["Transmisiones públicas de radio", "Transmisiones no públicas efectuadas a, desde o dentro de un sistema informático", "Transmisiones satelitales de televisión", "Transmisiones de datos entre servidores gubernamentales"], "correct": 1}, {"q": "Según el Artículo 4, ¿qué delito se comete al dañar, borrar, deteriorar, alterar o suprimir datos informáticos de forma deliberada?", "options": ["Ataque a la integridad del sistema", "Ataque a la integridad de los datos", "Abuso de dispositivos", "Falsificación informática"], "correct": 1}, {"q": "¿Cuál artículo del Convenio regula los 'ataques a la integridad del sistema'?", "options": ["Artículo 3", "Artículo 4", "Artículo 5", "Artículo 6"], "correct": 2}, {"q": "¿A qué conductas se refiere el Artículo 6 del Convenio?", "options": ["Pornografía infantil", "Falsificación informática", "Abuso de dispositivos", "Fraude informático"], "correct": 2}, {"q": "El Artículo 7 tipifica la falsificación informática. ¿Cuál es el elemento esencial de este delito?", "options": ["La destrucción de un sistema informático", "La introducción o alteración de datos para generar datos no auténticos", "El acceso no autorizado a bases de datos", "La interceptación de comunicaciones privadas"], "correct": 1}, {"q": "¿Qué delito regula el Artículo 8 del Convenio de Budapest?", "options": ["Espionaje informático", "Fraude informático", "Ataques de denegación de servicio", "Piratería de software"], "correct": 1}, {"q": "Según el Artículo 9, ¿cuál es la edad mínima para considerar 'menor' a efectos de pornografía infantil, salvo reserva de las Partes?", "options": ["14 años", "15 años", "16 años", "18 años"], "correct": 3}, {"q": "¿Cuántos capítulos principales contiene el Convenio de Budapest?", "options": ["Dos capítulos", "Tres capítulos", "Cuatro capítulos", "Cinco capítulos"], "correct": 2}, {"q": "¿Qué trata el Capítulo I del Convenio de Budapest?", "options": ["Derecho penal sustantivo", "Terminología (definiciones)", "Cooperación internacional", "Disposiciones finales"], "correct": 1}, {"q": "¿En qué capítulo del Convenio se ubican los artículos relativos a las medidas de derecho procesal?", "options": ["Capítulo I", "Capítulo II, Sección 2", "Capítulo III", "Capítulo IV"], "correct": 1}, {"q": "¿Cuál es el plazo máximo de conservación de datos que puede ordenarse en virtud del Artículo 16?", "options": ["Treinta días", "Sesenta días", "Noventa días", "Ciento veinte días"], "correct": 2}, {"q": "¿Qué regula el Artículo 18 del Convenio?", "options": ["Registro y confiscación de datos", "Orden de presentación de datos", "Interceptación de datos en tiempo real", "Conservación rápida de datos"], "correct": 1}, {"q": "El Artículo 22 del Convenio trata sobre:", "options": ["La asistencia mutua internacional", "La jurisdicción", "Las sanciones penales", "La extradición"], "correct": 1}, {"q": "¿Cuál es el artículo del Convenio que establece la extradición entre las Partes?", "options": ["Artículo 22", "Artículo 23", "Artículo 24", "Artículo 25"], "correct": 2}, {"q": "¿Qué establece el Artículo 35 del Convenio?", "options": ["La red de puntos de contacto disponibles 24/7", "Los principios generales de cooperación internacional", "Los requisitos de extradición", "Las condiciones de conservación de datos"], "correct": 0}, {"q": "¿Cuándo quedó abierto a la firma el Convenio de Budapest?", "options": ["23 de noviembre de 2001", "15 de enero de 2002", "28 de enero de 2003", "1 de julio de 2004"], "correct": 0}, {"q": "¿En cuántos idiomas auténticos fue redactado el Convenio de Budapest?", "options": ["Uno (inglés)", "Dos (francés e inglés)", "Tres (francés, inglés y español)", "Cuatro (francés, inglés, alemán y ruso)"], "correct": 1}, {"q": "¿Cuál es el Primer Protocolo Adicional al Convenio de Budapest?", "options": ["El Protocolo sobre cooperación y pruebas electrónicas", "El Protocolo relativo a la penalización de actos de índole racista y xenófoba cometidos por sistemas informáticos", "El Protocolo sobre ciberterrorismo", "El Protocolo sobre fraude electrónico transfronterizo"], "correct": 1}, {"q": "¿En qué año fue abierto a la firma el Primer Protocolo Adicional al Convenio de Budapest?", "options": ["2001", "2002", "2003", "2004"], "correct": 2}, {"q": "¿Cuál es el número de Serie del Segundo Protocolo Adicional al Convenio de Budapest?", "options": ["STCE núm. 185", "STCE núm. 189", "STCE núm. 224", "STCE núm. 201"], "correct": 2}, {"q": "El Segundo Protocolo Adicional fue abierto a la firma el:", "options": ["28 de enero de 2003", "12 de mayo de 2022", "23 de noviembre de 2001", "15 de junio de 2020"], "correct": 1}, {"q": "¿Cuál es el principal objetivo del Segundo Protocolo Adicional?", "options": ["Tipificar nuevos delitos informáticos", "Reforzar la cooperación y la divulgación de pruebas electrónicas", "Establecer sanciones mínimas para ciberdelitos", "Crear un tribunal internacional de ciberdelincuencia"], "correct": 1}, {"q": "¿Qué principio central debe garantizar el Artículo 15 en relación con los poderes de investigación?", "options": ["El principio de eficacia procesal", "El principio de proporcionalidad y respeto a los derechos humanos", "El principio de soberanía territorial", "El principio de reciprocidad"], "correct": 1}, {"q": "Según el Artículo 13, las sanciones para los delitos del Convenio deben ser:", "options": ["Uniformes para todos los países signatarios", "Efectivas, proporcionadas y disuasorias", "Exclusivamente privativas de libertad", "Determinadas por organismos internacionales"], "correct": 1}, {"q": "¿Cuál artículo del Convenio regula la responsabilidad de las personas jurídicas?", "options": ["Artículo 10", "Artículo 11", "Artículo 12", "Artículo 13"], "correct": 2}, {"q": "¿Qué conductas penaliza el Artículo 11 del Convenio?", "options": ["El fraude y la estafa informática", "La tentativa y la complicidad", "El abuso de dispositivos", "La usurpación de identidad"], "correct": 1}, {"q": "¿Qué organismo debe ser informado periódicamente sobre la interpretación y aplicación del Convenio según el Artículo 45?", "options": ["El Tribunal Europeo de Derechos Humanos", "La Asamblea Parlamentaria del Consejo de Europa", "El Comité Europeo para los Problemas Criminales (CDPC)", "INTERPOL"], "correct": 2}, {"q": "¿Qué artículo del Convenio regula el 'acceso transfronterizo a datos almacenados con consentimiento o cuando sean accesibles al público'?", "options": ["Artículo 29", "Artículo 30", "Artículo 31", "Artículo 32"], "correct": 3}, {"q": "¿Para qué delitos aplica la extradición según el Artículo 24 del Convenio?", "options": ["Solo para delitos con pena mínima de diez años", "Para delitos tipificados en los artículos 2 a 11, con pena máxima de al menos un año", "Únicamente para delitos transfronterizos graves", "Para todos los delitos cometidos por medios informáticos"], "correct": 1}, {"q": "¿Cuál de los siguientes NO es un tipo de dato tráfico según el Artículo 1 del Convenio?", "options": ["El origen de la comunicación", "El destino de la comunicación", "El contenido del mensaje enviado", "La hora y fecha de la comunicación"], "correct": 2}, {"q": "¿En qué sección del Capítulo II se regulan las medidas procesales del Convenio?", "options": ["Sección 1", "Sección 2", "Sección 3", "Sección 4"], "correct": 1}, {"q": "Según el Artículo 10, ¿bajo qué condiciones se tipifican las infracciones a la propiedad intelectual?", "options": ["Cuando se cometan en territorio de un Estado parte", "Cuando se cometan deliberadamente, a escala comercial y por medio de un sistema informático", "Cuando causen daño económico superior a un umbral establecido", "Cuando afecten a ciudadanos de más de un Estado parte"], "correct": 1}, {"q": "¿Cuál es el objetivo principal del Convenio de Budapest según su preámbulo?", "options": ["Crear una policía internacional de ciberdelincuencia", "Aplicar una política penal común para proteger a la sociedad contra la ciberdelincuencia", "Establecer un sistema único de sanciones para delitos informáticos", "Regular el uso de Internet a nivel mundial"], "correct": 1}, {"q": "¿A qué hace referencia la 'doble tipificación penal' en el contexto del Convenio?", "options": ["Que el delito sea sancionado dos veces en el mismo país", "Que la conducta sea delito tanto en el país requirente como en el requerido", "Que el delito tenga dos modalidades de comisión", "Que se apliquen dos leyes distintas al mismo delito"], "correct": 1}, {"q": "¿Qué artículo regula la 'obtención en tiempo real de datos sobre el tráfico'?", "options": ["Artículo 18", "Artículo 19", "Artículo 20", "Artículo 21"], "correct": 2}, {"q": "¿Qué contempla el Artículo 21 del Convenio?", "options": ["Conservación de datos sobre el tráfico", "Interceptación de datos sobre el contenido", "Registro y confiscación de datos almacenados", "Orden de presentación de datos a abonados"], "correct": 1}, {"q": "¿Cuántos Estados como mínimo, y de cuántos del Consejo de Europa, debían ratificar el Convenio para su entrada en vigor?", "options": ["Tres Estados en total, con al menos uno del Consejo de Europa", "Cinco Estados, con al menos tres miembros del Consejo de Europa", "Diez Estados, con al menos cinco miembros del Consejo de Europa", "Siete Estados, todos miembros del Consejo de Europa"], "correct": 1}, {"q": "¿Qué artículo del Convenio regula la 'información espontánea' entre Partes?", "options": ["Artículo 24", "Artículo 25", "Artículo 26", "Artículo 27"], "correct": 2}, {"q": "¿Qué se entiende por 'proveedor de servicios' según el Artículo 1 del Convenio?", "options": ["Solo empresas privadas de telecomunicaciones con más de 1000 usuarios", "Toda entidad pública o privada que brinde posibilidad de comunicarse o que procese/almacene datos informáticos", "Únicamente los proveedores de acceso a Internet", "Las empresas que suministran hardware informático"], "correct": 1}, {"q": "¿Cuál de las siguientes afirmaciones sobre el Artículo 26 (información espontánea) es correcta?", "options": ["Obliga a las Partes a compartir toda información obtenida en sus investigaciones", "Permite, sin solicitud previa, comunicar información que pueda ayudar a otra Parte", "Solo aplica cuando existe tratado bilateral de asistencia mutua", "Requiere autorización judicial previa en todos los casos"], "correct": 1}, {"q": "¿Qué instrumento internacional puede utilizarse como fundamento jurídico para la extradición cuando no existe tratado bilateral?", "options": ["El Convenio Europeo de Derechos Humanos", "El propio Convenio de Budapest", "La Carta de las Naciones Unidas", "El Estatuto de Roma"], "correct": 1}, {"q": "¿Qué tipo de sanciones contempla el Artículo 12 para las personas jurídicas?", "options": ["Solo sanciones penales privativas de libertad para sus directivos", "Sanciones penales, civiles o administrativas según los principios jurídicos de cada Parte", "Únicamente sanciones pecuniarias", "Solo clausura o disolución de la entidad"], "correct": 1}, {"q": "¿Qué regula el Artículo 19 del Convenio?", "options": ["La conservación rápida de datos en tiempo real", "El registro y confiscación de datos informáticos almacenados", "La orden de presentación de datos", "La interceptación de comunicaciones"], "correct": 1}, {"q": "Según el Convenio, ¿cuál es la triada de valores que los sistemas informáticos deben proteger?", "options": ["Integridad, autenticidad y disponibilidad", "Confidencialidad, integridad y disponibilidad", "Privacidad, seguridad y accesibilidad", "Autenticidad, privacidad e integridad"], "correct": 1}], "intermedio": [{"q": "El Artículo 4 del Convenio permite a las Partes formular una reserva respecto a los ataques a la integridad de los datos. ¿En qué consiste esa reserva?", "options": ["Exigir que los actos se cometan con dolo específico de perjuicio económico", "Exigir que los actos provoquen daños graves", "Limitar la tipificación solo a datos de sistemas públicos", "Excluir de responsabilidad a los administradores de sistemas"], "correct": 1}, {"q": "En relación con el Artículo 6 (abuso de dispositivos), ¿cuál es la excepción expresa contemplada en el párrafo 2?", "options": ["La actividad de los proveedores de antivirus", "Los actos no destinados a cometer un delito, como las pruebas autorizadas o la protección de sistemas", "El uso de herramientas por parte de agencias gubernamentales", "La investigación académica en universidades acreditadas"], "correct": 1}, {"q": "¿Cuál es la diferencia esencial entre los delitos de los Artículos 4 y 5 del Convenio?", "options": ["El Artículo 4 protege datos y el 5 protege el funcionamiento del sistema", "El Artículo 4 requiere dolo y el 5 admite culpa", "El Artículo 4 aplica a datos privados y el 5 a datos públicos", "El Artículo 4 es para personas físicas y el 5 para personas jurídicas"], "correct": 0}, {"q": "El Artículo 9 sobre pornografía infantil admite reservas para no aplicar ciertos apartados. ¿Cuáles pueden ser objeto de reserva?", "options": ["Solo la producción y oferta (apartados a y b)", "Los apartados d) y e) del párrafo 1, y los apartados b) y c) del párrafo 2", "Todos los apartados si el Estado cuenta con legislación penal equivalente", "Únicamente la posesión para uso personal (apartado e)"], "correct": 1}, {"q": "Según el Artículo 14, ¿a qué supuestos se aplican los poderes y procedimientos de la Sección de Derecho Procesal?", "options": ["Solo a los delitos tipificados en los artículos 2 a 11", "A los delitos de los artículos 2 a 11, a cualquier delito cometido por sistema informático, y a la obtención de pruebas electrónicas de cualquier delito", "Únicamente a delitos transfronterizos", "Solo a los delitos que causen daño superior a un umbral económico"], "correct": 1}, {"q": "¿Qué obligación adicional impone el Artículo 16 sobre la confidencialidad durante la conservación de datos?", "options": ["La Parte requirente debe notificar al afectado dentro de 30 días", "El encargado de la custodia debe mantener en secreto la aplicación del procedimiento", "Los datos deben ser encriptados durante su conservación", "El juez competente debe revisar la orden cada 15 días"], "correct": 1}, {"q": "¿Qué diferencia existe entre los artículos 16 (conservación de datos) y 17 (conservación y revelación parcial de datos sobre el tráfico)?", "options": ["El 16 aplica a datos de contenido y el 17 a datos de abonados", "El 17 añade la obligación de revelar datos suficientes para identificar proveedores de servicio cuando intervinieron varios en la transmisión", "El 16 aplica solo a solicitudes internacionales y el 17 a solicitudes nacionales", "El 17 permite plazos más largos de conservación que el 16"], "correct": 1}, {"q": "¿Cuáles son los componentes de los 'datos relativos a los abonados' según el Artículo 18 del Convenio?", "options": ["Datos de tráfico, datos de contenido y datos de localización", "Tipo de servicio, identidad/dirección del abonado, y datos sobre localización de equipos; excluye tráfico y contenido", "Solo nombre, dirección y número de teléfono del abonado", "Todos los datos que obren en poder del proveedor de servicios"], "correct": 1}, {"q": "Según el Artículo 19, ¿qué facultad adicional tienen las autoridades cuando, al registrar un sistema informático, creen que los datos están en otro sistema?", "options": ["Deben solicitar autorización judicial específica para cada sistema adicional", "Pueden ampliar rápidamente el registro al otro sistema si los datos son lícitamente accesibles desde el sistema inicial", "Deben suspender el registro y solicitar asistencia internacional", "Solo pueden obtener una copia si el titular del sistema consiente"], "correct": 1}, {"q": "¿En qué se distingue la interceptación del Artículo 20 (datos de tráfico) de la del Artículo 21 (datos de contenido)?", "options": ["El Artículo 21 tiene un ámbito más restringido: solo aplica a 'delitos graves' definidos en el derecho interno", "El Artículo 20 requiere orden judicial y el 21 no", "El Artículo 21 es exclusivo para investigaciones internacionales", "No hay diferencia sustancial, ambos artículos son equivalentes"], "correct": 0}, {"q": "¿Bajo qué criterios puede una Parte afirmar jurisdicción extraterritorial según el Artículo 22?", "options": ["Solo cuando el delito afecte a infraestructuras críticas nacionales", "Cuando el delito se cometa en su territorio, a bordo de buque o aeronave propia, o por uno de sus nacionales", "Solo cuando el delincuente se encuentre físicamente en su territorio", "Únicamente cuando medie acuerdo bilateral con el Estado de comisión"], "correct": 1}, {"q": "¿Cuál es la regla para resolver conflictos de jurisdicción entre varias Partes del Convenio?", "options": ["Prevalece siempre la jurisdicción del Estado donde se encontraba el servidor", "Las Partes interesadas celebrarán consultas para determinar la jurisdicción más adecuada", "Decide el Comité de Ministros del Consejo de Europa", "Prevalece la jurisdicción del Estado con legislación más severa"], "correct": 1}, {"q": "¿Qué excepciones a la asistencia mutua por naturaleza fiscal prevé el Artículo 25?", "options": ["Las Partes pueden denegar asistencia si el delito tiene carácter fiscal", "La Parte requerida no puede denegar asistencia únicamente porque el delito sea de naturaleza fiscal", "Los delitos fiscales están excluidos del ámbito del Convenio", "Los delitos fiscales solo se tramitan a través de tratados específicos"], "correct": 1}, {"q": "Según el Artículo 27, ¿cuáles son los motivos adicionales por los que la Parte requerida puede denegar la asistencia mutua?", "options": ["Si la solicitud implica gastos excesivos o afecta a secretos industriales", "Si el delito es considerado político o si la ejecución podría atentar contra la soberanía, seguridad u orden público", "Si la solicitud no viene acompañada de traducción oficial", "Si el plazo de respuesta resulta incompatible con la carga procesal del Estado requerido"], "correct": 1}, {"q": "¿Qué exige el Artículo 29 respecto a la doble tipificación para la conservación de datos?", "options": ["La doble tipificación siempre es exigible para la conservación", "La doble tipificación no es requerida como condición para la conservación", "La doble tipificación se exige solo para delitos relacionados con contenido", "La doble tipificación se exige cuando el Estado requerido lo solicite expresamente"], "correct": 1}, {"q": "¿Cuál es el plazo mínimo de conservación de datos en respuesta a una solicitud del Artículo 29?", "options": ["Treinta días", "Cuarenta y cinco días", "Sesenta días", "Noventa días"], "correct": 2}, {"q": "¿Qué prevé el Artículo 30 sobre la revelación de datos de tráfico cuando intervino un tercer proveedor de otro Estado?", "options": ["La Parte requerida debe solicitar autorización al tercer Estado antes de revelar datos", "La Parte requerida revelará rápidamente los datos suficientes para identificar al proveedor de servicios del tercer Estado y la vía de transmisión", "No se pueden revelar datos de tráfico de terceros Estados sin acuerdo bilateral específico", "La Parte requerida solo comunica la existencia del tercer proveedor pero no sus datos"], "correct": 1}, {"q": "El Artículo 32 permite el acceso transfronterizo sin autorización del otro Estado en dos supuestos. ¿Cuáles son?", "options": ["Datos de tráfico en tiempo real y datos de contenido con orden judicial", "Datos accesibles al público (fuente abierta) y datos en otro Estado con consentimiento lícito de la persona autorizada", "Datos de abonados y datos conservados por proveedores de servicios", "Datos en servidores de organismos internacionales y datos cifrados con clave compartida"], "correct": 1}, {"q": "¿Qué tipo de asistencia contempla específicamente el Artículo 33 del Convenio?", "options": ["Asistencia para la interceptación de datos de contenido", "Asistencia mutua para la obtención en tiempo real de datos sobre el tráfico", "Asistencia para la ejecución de sentencias extranjeras en materia informática", "Asistencia para la formación de peritos forenses digitales"], "correct": 1}, {"q": "¿Cuál es el propósito de la 'Red 24/7' del Artículo 35?", "options": ["Monitorear en tiempo real los ataques cibernéticos a nivel global", "Garantizar ayuda inmediata para investigaciones, incluyendo asesoramiento técnico, conservación de datos y obtención de pruebas", "Proporcionar acceso permanente a bases de datos criminales compartidas", "Centralizar todas las solicitudes de asistencia internacional en materia informática"], "correct": 1}, {"q": "¿Qué regula el Primer Protocolo Adicional al Convenio de Budapest (STE 189)?", "options": ["La penalización del terrorismo cibernético", "La penalización de actos de índole racista y xenófoba cometidos por medio de sistemas informáticos", "La cooperación para la divulgación de pruebas electrónicas", "La responsabilidad de los proveedores de servicios de Internet"], "correct": 1}, {"q": "Según las Notas de Orientación del Convenio, ¿cómo se define un 'botnet' en relación con el Convenio?", "options": ["Un tipo de virus que cifra archivos del usuario", "Una red de sistemas informáticos comprometidos controlados remotamente sin conocimiento de sus propietarios", "Un sistema de comunicación encriptada usado por delincuentes", "Un programa de vigilancia de redes corporativas"], "correct": 1}, {"q": "En el contexto de las Notas de Orientación, ¿bajo qué artículos del Convenio se pueden encuadrar los ataques DDoS (denegación de servicio distribuido)?", "options": ["Solo el Artículo 2 (acceso ilícito)", "Los artículos 4 y/o 5 (ataques a la integridad de datos y del sistema)", "El Artículo 8 (fraude informático)", "El Artículo 6 (abuso de dispositivos) exclusivamente"], "correct": 1}, {"q": "¿Bajo qué artículo del Convenio se puede encuadrar el 'ransomware' según las Notas de Orientación?", "options": ["Solo el Artículo 2", "Artículos 2, 4, 5, 6 y 8, según la modalidad concreta del ataque", "Solo el Artículo 8 (fraude informático)", "El Artículo 10 (propiedad intelectual)"], "correct": 1}, {"q": "¿Qué establece el Artículo 39 sobre la relación del Convenio con otros tratados internacionales?", "options": ["El Convenio de Budapest deroga todos los tratados bilaterales previos en materia informática", "El Convenio pretende completar los tratados existentes, y dos Partes pueden aplicar sus propios acuerdos si no son incompatibles con los objetivos del Convenio", "El Convenio prevalece sobre cualquier otro tratado bilateral de asistencia mutua", "Las Partes no pueden celebrar acuerdos bilaterales sobre materias ya reguladas en el Convenio"], "correct": 1}, {"q": "¿Qué establece la 'cláusula federal' del Artículo 41?", "options": ["Los Estados federales están exentos de las obligaciones del Capítulo III", "Los Estados federales pueden asumir las obligaciones del Capítulo II de forma compatible con sus principios federales, pero deben seguir cooperando según el Capítulo III", "Los Estados federales deben ratificar el Convenio con la aprobación de todos sus estados miembros", "Los Estados federales tienen un plazo adicional de cinco años para implementar el Convenio"], "correct": 1}, {"q": "¿Cuáles son los artículos que admiten reservas según el Artículo 42 del Convenio?", "options": ["Artículos 2, 3, 6, 7, 9, 10, 11, 14, 22, 29 y 41", "Solo los artículos de derecho procesal (14 a 21)", "Todos los artículos de derecho sustantivo (2 a 13)", "Solo los artículos sobre cooperación internacional (23 a 35)"], "correct": 0}, {"q": "¿Qué plazo establece el Artículo 47 para que surta efecto la denuncia del Convenio?", "options": ["Inmediatamente tras la notificación", "El primer día del mes siguiente a los tres meses desde la notificación al Secretario General", "Un año después de la notificación", "Al finalizar el año calendario en que se notifique"], "correct": 1}, {"q": "Según el informe explicativo al Convenio, ¿cuál fue el mandato específico del comité de expertos que elaboró el texto?", "options": ["Redactar un código penal informático uniforme para todos los países europeos", "Examinar los delitos cometidos en el ciberespacio, el derecho sustantivo, procesal, la jurisdicción y la cooperación internacional, a la luz de las Recomendaciones previas", "Actualizar el Convenio Europeo de Extradición para incluir delitos informáticos", "Establecer un sistema de certificación de seguridad para proveedores de Internet"], "correct": 1}, {"q": "¿Cuál es la diferencia entre una 'declaración' (Art. 40) y una 'reserva' (Art. 42) en el Convenio?", "options": ["Las declaraciones amplían obligaciones y las reservas las reducen", "Las declaraciones permiten exigir elementos adicionales que el Convenio hace facultativos; las reservas permiten excluir o limitar ciertas obligaciones", "No hay diferencia jurídica entre ambas figuras", "Las declaraciones son temporales y las reservas son permanentes"], "correct": 1}, {"q": "¿Bajo qué artículos del Convenio se enmarcan jurídicamente las 'botnets' según las Notas de Orientación?", "options": ["Artículos 2, 3, 4, 5 y 6 del Convenio, según la conducta concreta", "Solo el Artículo 2 (acceso ilícito)", "Artículos 7 y 8 (falsificación y fraude)", "Solo el Artículo 5 (integridad del sistema)"], "correct": 0}, {"q": "Según el Artículo 25 párrafo 5, ¿cómo se verifica la doble tipificación para la asistencia mutua?", "options": ["Se requiere que el nombre del delito sea idéntico en ambas legislaciones", "Se considera cumplida si la conducta es delito en el derecho interno de la Parte requerida, independientemente de la categoría o denominación", "Se requiere una certificación formal del ministerio de justicia del país requirente", "Solo aplica para delitos con pena superior a dos años"], "correct": 1}, {"q": "¿Qué contemplan las Notas de Orientación sobre el 'spam' en relación con el Convenio de Budapest?", "options": ["El spam nunca puede encuadrarse en el Convenio por tratarse de comunicaciones no solicitadas", "El spam puede encuadrarse en el Convenio cuando se acompaña de malware, phishing o se usa para perpetrar otros delitos tipificados", "El spam está regulado exclusivamente por el Artículo 10 (propiedad intelectual)", "El spam solo cae bajo el Convenio si supera un umbral de mensajes enviados por día"], "correct": 1}, {"q": "¿Cuáles son los dos idiomas auténticos en que fue hecho el Convenio y dónde se depositó el ejemplar único?", "options": ["Inglés y alemán; depositado en Berlín", "Francés e inglés; depositado en los archivos del Consejo de Europa", "Inglés y español; depositado en la ONU en Nueva York", "Francés y ruso; depositado en el Palacio de Justicia de Budapest"], "correct": 1}, {"q": "¿Qué establece el Artículo 37 para la adhesión de Estados no miembros del Consejo de Europa que no participaron en la elaboración?", "options": ["Pueden adherirse libremente sin condición adicional", "El Comité de Ministros puede invitarlos, previa consulta con Estados Contratantes y con su consentimiento unánime", "Deben esperar cinco años desde la entrada en vigor del Convenio", "Necesitan el voto afirmativo de la Asamblea General de la ONU"], "correct": 1}, {"q": "En las Notas de Orientación sobre ataques a infraestructuras críticas, ¿cuál es la relación con el Artículo 5?", "options": ["El Artículo 5 no aplica a infraestructuras críticas por ser de naturaleza física", "El Artículo 5 (integridad del sistema) puede aplicarse cuando el ataque obstaculiza gravemente el funcionamiento de sistemas informáticos que controlan infraestructuras críticas", "Las infraestructuras críticas tienen un régimen especial ajeno al Convenio", "Solo el Artículo 2 (acceso ilícito) aplica a infraestructuras críticas"], "correct": 1}, {"q": "Según la Nota de Orientación sobre terrorismo, ¿cómo puede relacionarse el Convenio de Budapest con actos terroristas?", "options": ["El Convenio excluye expresamente el terrorismo de su ámbito de aplicación", "Los instrumentos procesales del Convenio (como conservación de datos o asistencia mutua) pueden utilizarse para investigar el uso de sistemas informáticos con fines terroristas", "El Convenio solo aplica al terrorismo cibernético directo, no al uso auxiliar de sistemas informáticos", "El terrorismo se rige por el Segundo Protocolo Adicional exclusivamente"], "correct": 1}, {"q": "¿Cuál es el contenido específico de la Nota de Orientación sobre el Artículo 32?", "options": ["Explica cómo realizar interceptaciones de comunicaciones transfronterizas", "Clarifica cuándo una Parte puede acceder a datos en otro Estado sin autorización: solo en fuente abierta o con consentimiento voluntario de persona autorizada", "Describe el procedimiento de asistencia mutua para acceder a datos de tráfico", "Establece los protocolos técnicos para el intercambio de datos forenses"], "correct": 1}, {"q": "¿Cuál es el alcance del Artículo 33 del Convenio sobre asistencia en tiempo real?", "options": ["Permite interceptar datos de contenido en tiempo real sin límite de delitos", "Permite asistencia mutua para datos de tráfico en tiempo real, como mínimo para los mismos delitos que se permitirían en casos nacionales", "Solo aplica a investigaciones de terrorismo y crimen organizado", "Requiere acuerdo previo específico para cada caso de intercepción"], "correct": 1}, {"q": "¿En qué se diferencia el Primer Protocolo del Convenio de Budapest (STE 189) del Convenio principal?", "options": ["El Protocolo crea obligaciones de extradición más amplias", "El Protocolo amplía el ámbito material tipificando conductas racistas y xenófobas cometidas por sistemas informáticos", "El Protocolo establece un mecanismo de supervisión más estricto", "El Protocolo regula exclusivamente la responsabilidad de plataformas digitales"], "correct": 1}, {"q": "¿Cuál es el papel del Secretario General del Consejo de Europa según el Artículo 27 en materia de asistencia mutua?", "options": ["Actúa como árbitro en caso de controversias sobre solicitudes de asistencia", "Crea y mantiene actualizado el registro de autoridades centrales designadas por las Partes", "Aprueba o rechaza las solicitudes de asistencia mutua de carácter urgente", "Coordina directamente las solicitudes de extradición entre las Partes"], "correct": 1}, {"q": "¿Puede una Parte del Convenio posponerse a ejecutar una solicitud de asistencia mutua? ¿Bajo qué condición?", "options": ["Sí, libremente y sin necesidad de explicación", "Sí, cuando la ejecución pudiera causar perjuicios a investigaciones o procedimientos propios", "No, todas las solicitudes deben ejecutarse de inmediato", "Solo si el delito tiene pena inferior a dos años en el derecho interno"], "correct": 1}, {"q": "El Convenio establece que las condiciones y salvaguardias del Artículo 15 deben incluir, cuando proceda, ¿qué tipo de supervisión?", "options": ["Supervisión parlamentaria obligatoria", "Supervisión judicial u otra forma de supervisión independiente", "Control por parte del CDPC en todos los casos", "Auditoría internacional por organismos externos al Estado"], "correct": 1}, {"q": "¿Cuándo entra en vigor el Convenio para un Estado que lo ratifica después de su entrada en vigor inicial?", "options": ["El mismo día del depósito del instrumento de ratificación", "El primer día del mes siguiente a los tres meses desde la expresión de su consentimiento", "Al comienzo del año siguiente a la ratificación", "Al mismo tiempo que la entrada en vigor general del Convenio"], "correct": 1}, {"q": "¿Qué establece el Artículo 28 sobre la confidencialidad y restricción de uso de datos obtenidos en asistencia mutua?", "options": ["Los datos siempre deben ser públicos para garantizar la transparencia", "La Parte requerida puede condicionar la entrega a que se preserve la confidencialidad o a que no se usen fuera del caso investigado", "No existe restricción alguna sobre el uso de datos obtenidos en cooperación", "Los datos solo pueden ser usados por el ministerio fiscal requirente"], "correct": 1}, {"q": "Según las Notas de Orientación sobre usurpación de identidad, ¿en qué artículos del Convenio se puede encuadrar?", "options": ["Solo en el Artículo 9 (pornografía infantil)", "En los artículos 2, 7 y 8 (acceso ilícito, falsificación y fraude informático), según las circunstancias", "Exclusivamente en el Artículo 3 (interceptación ilícita)", "No está contemplada en el Convenio de Budapest"], "correct": 1}, {"q": "¿Cuál es el contenido de la Nota de Orientación sobre 'nuevas formas de programas informáticos malintencionados'?", "options": ["Define una lista cerrada de tipos de malware tipificados", "Analiza cómo el Artículo 6 (abuso de dispositivos) puede aplicarse a formas emergentes de malware, dado que la tipificación no depende de la tecnología específica sino de la conducta", "Establece estándares técnicos para detectar malware en investigaciones forenses", "Excluye el malware nuevo de la cobertura del Convenio hasta que sea actualizado"], "correct": 1}, {"q": "¿Qué relevancia tiene el Artículo 23 en relación con los tratados bilaterales ya existentes entre Partes?", "options": ["Los sustituye completamente", "Las Partes cooperarán también conforme a los instrumentos internacionales ya existentes, acuerdos de legislación uniforme y derecho interno", "Solo aplica cuando no existen tratados bilaterales previos", "Permite ignorar los tratados previos si el Convenio de Budapest ofrece una solución más eficaz"], "correct": 1}, {"q": "¿Para qué tipo de investigaciones se permite el uso urgente del fax o correo electrónico como canal de comunicación en las solicitudes de asistencia (Art. 25)?", "options": ["Para todos los tipos de solicitudes sin excepción", "Para casos de urgencia, siempre que ofrezcan niveles adecuados de seguridad y autenticación, con confirmación oficial posterior si se exige", "Solo para solicitudes de conservación de datos, no para otras medidas", "Únicamente cuando los canales diplomáticos estén bloqueados"], "correct": 1}, {"q": "¿Cuáles son los elementos que deben indicarse en una solicitud de conservación de datos conforme al Artículo 29?", "options": ["Solo la identidad del sospechoso y el tipo de delito", "La autoridad solicitante, el delito, los datos a conservar y su relación con el delito, la información disponible sobre el custodio, la necesidad de conservación y la intención de presentar solicitud de asistencia", "El número de la causa judicial y la firma del fiscal competente", "Un resumen completo de la investigación con todos los medios probatorios recabados"], "correct": 1}], "experto": [{"q": "Un Estado Parte invoca el Artículo 6.3 para no penalizar la producción de dispositivos diseñados para acceso ilícito. ¿Qué limitación impone el propio artículo a esa reserva?", "options": ["La reserva no puede afectar la venta y distribución de contraseñas o códigos de acceso", "La reserva no puede mantenerse más de cinco años sin revisión", "La reserva requiere aprobación del CDPC antes de formularse", "La reserva solo puede formularse por Estados que hayan ratificado el Primer Protocolo"], "correct": 0}, {"q": "¿Qué tensión doctrinal identifica el Informe Explicativo al Convenio entre los artículos 20-21 y el Artículo 15?", "options": ["La tensión entre la cooperación internacional y la soberanía estatal", "La tensión entre la eficacia de la investigación penal y el respeto a los derechos fundamentales, que exige que los poderes de interceptación estén sujetos a condiciones de proporcionalidad y supervisión independiente", "La tensión entre el derecho de los proveedores a la confidencialidad comercial y las obligaciones de divulgación", "La tensión entre la uniformidad del Convenio y la diversidad constitucional de los Estados"], "correct": 1}, {"q": "Al analizar el Artículo 32(b), ¿cuál es el elemento más problemático identificado en la Nota de Orientación sobre acceso transfronterizo?", "options": ["La definición de 'datos accesibles al público'", "La delimitación de qué constituye 'consentimiento lícito y voluntario' de la persona autorizada a revelar datos cuando esa persona se encuentra en otro Estado", "La determinación del Estado que tiene jurisdicción sobre los datos almacenados", "La compatibilidad del artículo con el derecho a la privacidad del CEDH"], "correct": 1}, {"q": "Desde la perspectiva del Segundo Protocolo Adicional (STCE 224), ¿qué mecanismo novedoso se introduce para acceder a datos de abonados sin recurrir a la asistencia judicial formal?", "options": ["La creación de una autoridad supranacional de acceso directo a datos", "La posibilidad de solicitar datos directamente a proveedores de servicios establecidos en otra Parte, bajo un marco regulado de divulgación expedita", "Un sistema de subrogación procesal entre fiscalías de distintos Estados", "La obligación de los proveedores de depositar copias de datos en un repositorio centralizado del Consejo de Europa"], "correct": 1}, {"q": "En el análisis del Artículo 22 sobre jurisdicción, ¿qué problema específico plantea el principio de ubiquidad en delitos informáticos y cómo lo aborda el Convenio?", "options": ["El Convenio elimina el principio de ubiquidad y establece jurisdicción exclusiva del Estado donde se aloja el servidor", "El Convenio no resuelve la ubiquidad pero establece la obligación de consultas entre Partes para determinar la jurisdicción más adecuada cuando hay concurrencia", "El Convenio establece un orden de prelación de jurisdicciones basado en la gravedad del daño causado", "El Convenio delega la resolución de conflictos de jurisdicción al Tribunal Internacional de Justicia"], "correct": 1}, {"q": "¿Cuál es la implicación jurídica de que el Artículo 29.3 no exija doble tipificación para la conservación, mientras el Artículo 29.4 sí la permite para la posterior divulgación?", "options": ["Genera una incoherencia lógica que el Informe Explicativo reconoce como defecto del Convenio", "Permite un sistema pragmático: conservar datos inmediatamente (preservar pruebas antes de su posible pérdida) y decidir la divulgación cuando se verifique la tipificación bilateral", "Obliga al Estado requerido a destruir los datos conservados si no se cumple la doble tipificación al momento de la divulgación", "Implica que el Estado requirente debe demostrar doble tipificación ya en la solicitud de conservación"], "correct": 1}, {"q": "En la tipificación de la falsificación informática (Art. 7), ¿qué elemento la diferencia estructuralmente del fraude informático (Art. 8)?", "options": ["La falsificación no requiere perjuicio patrimonial ni beneficio económico; se consuma con la generación de datos no auténticos con intención de que sean utilizados como auténticos", "La falsificación solo aplica a documentos oficiales y el fraude a transacciones privadas", "La falsificación requiere dolo específico de perjuicio a tercero mientras el fraude admite dolo eventual", "La falsificación se aplica solo a sistemas públicos y el fraude a sistemas privados"], "correct": 0}, {"q": "¿Qué implicación tiene el Artículo 12.4 respecto a la relación entre responsabilidad de personas jurídicas y de personas físicas?", "options": ["La responsabilidad de la persona jurídica extingue automáticamente la de la persona física", "La responsabilidad de la persona jurídica es acumulativa y no perjudica la responsabilidad penal individual de las personas físicas que cometieron el delito", "Las personas físicas solo pueden ser responsables si la persona jurídica fue previamente condenada", "La responsabilidad de la persona jurídica solo procede cuando la persona física es inimputable"], "correct": 1}, {"q": "El Artículo 9.3 establece que los Estados Partes pueden fijar una edad inferior a 18 años para la definición de 'menor', pero ¿con qué límite absoluto?", "options": ["No inferior a 14 años", "No inferior a 15 años", "No inferior a 16 años", "No inferior a 17 años"], "correct": 2}, {"q": "¿Cuál es la crítica doctrinal principal que recibe el Artículo 32 del Convenio desde la perspectiva de la soberanía estatal?", "options": ["Que crea una asimetría entre Estados grandes y pequeños en la capacidad de investigación digital", "Que permite el acceso transfronterizo a datos sin notificación ni consentimiento del Estado en cuyo territorio se encuentran los datos, lo que puede vulnerar su soberanía digital", "Que su aplicación depende de definiciones tecnológicas que pueden cambiar rápidamente", "Que favorece desproporcionadamente a los Estados con mayor capacidad técnica"], "correct": 1}, {"q": "Según el Informe Explicativo al Convenio, ¿cuál es la razón por la que se requiere que el acceso ilícito (Art. 2) sea 'deliberado' y no meramente negligente?", "options": ["Porque la negligencia informática tiene su propia regulación en el Artículo 4", "Porque la naturaleza del bien jurídico protegido (confidencialidad de sistemas) solo resulta afectada de forma jurídicamente relevante cuando existe intención, descartando accesos accidentales", "Por exigencias de la Convención Europea de Derechos Humanos que prohíbe la responsabilidad penal objetiva", "Para armonizar con el estándar del common law que requiere mens rea específica"], "correct": 1}, {"q": "Al analizar el Segundo Protocolo Adicional (STCE 224), ¿cuál es el fundamento para la divulgación directa de datos a autoridades de otra Parte sin asistencia judicial formal?", "options": ["La primacía del derecho penal sobre el derecho internacional privado", "La necesidad de agilizar investigaciones ante la volatilidad de las pruebas electrónicas, con salvaguardas específicas de derechos fundamentales que compensan la reducción de formalidades", "La exigencia de los proveedores de servicios de contar con un marco jurídico claro para responder a solicitudes extranjeras", "El principio de reciprocidad automática entre todos los Estados Parte del Segundo Protocolo"], "correct": 1}, {"q": "¿Qué implicación tiene el artículo 11.2 sobre tentativa al limitarla solo a ciertos artículos (3 a 5, 7, 8, 9.1.a y c) y no a todos los delitos del Convenio?", "options": ["Los delitos no incluidos son impunes en grado de tentativa bajo el Convenio", "El Convenio deja un margen de discrecionalidad a las Partes para los delitos excluidos, reconociendo que la tentativa de algunos delitos informáticos (como el acceso ilícito consumado) plantea dificultades probatorias o conceptuales", "Los delitos excluidos admiten tentativa solo bajo el derecho interno sin obligación de armonización", "A y c son correctas"], "correct": 3}, {"q": "¿Cuál es el fundamento jurídico del Artículo 35 (Red 24/7) para justificar que los puntos de contacto puedan actuar sin autorización judicial previa en ciertos actos?", "options": ["La renuncia implícita de los Estados a la exclusividad judicial en materia de ciberdelincuencia", "La naturaleza de la asistencia prestada (asesoramiento técnico, facilitación) que no equivale a medidas coercitivas, reservándose las que impliquen coerción al derecho interno", "Un acuerdo complementario al Convenio que regula específicamente los poderes de los puntos de contacto", "La doctrina de la urgencia como excepción universal al principio de reserva judicial"], "correct": 1}, {"q": "¿Cómo aborda el Convenio de Budapest la tensión entre el Artículo 32 (acceso transfronterizo) y el principio de soberanía estatal reconocido en el Artículo 39?", "options": ["El Artículo 32 establece una excepción explícita al Artículo 39 con supremacía jerárquica", "El Artículo 32 está formulado de forma restrictiva (solo fuente abierta o consentimiento) para minimizar la intrusión en la soberanía, mientras el Artículo 39 asegura que el Convenio no afecta otros derechos y obligaciones", "El Informe Explicativo resuelve la tensión señalando que la soberanía sobre datos digitales es un concepto obsoleto", "El conflicto se resuelve mediante la negociación caso por caso ante el CDPC"], "correct": 1}, {"q": "Conforme a las Notas de Orientación sobre ransomware, ¿cuál es la razón por la que puede invocarse el Artículo 8 (fraude) además del Artículo 4 o 5?", "options": ["Porque el ransomware siempre implica una transacción financiera ilícita", "Porque el componente de extorsión del ransomware (exigir pago para restaurar acceso) puede configurar la interferencia con un sistema informático con intención de obtener un beneficio económico ilegítimo, elemento típico del fraude informático", "Porque el Artículo 8 es subsidiario a los artículos 4 y 5 y siempre se aplica cumulativamente", "Porque los artículos 4 y 5 solo aplican a daños irreversibles y el ransomware es reversible"], "correct": 1}, {"q": "¿Cuál es la diferencia entre la obligación de 'revelar' datos (Art. 30) y la de 'presentar' datos (Art. 18) en el sistema del Convenio?", "options": ["El Artículo 30 opera en contexto internacional mientras el 18 opera en el nacional; el primero es más urgente y limitado en su objeto (identificar proveedores y vía de transmisión), el segundo más completo", "Son idénticos en su objeto pero difieren en el órgano competente", "El Artículo 18 aplica a datos de abonados y el 30 a datos de contenido", "No hay diferencia material, ambos son mecanismos equivalentes de obtención de datos"], "correct": 0}, {"q": "En el análisis del Primer Protocolo Adicional, ¿cuáles son las conductas expresamente tipificadas respecto a material racista o xenófobo?", "options": ["Solo la distribución y la posesión para distribución", "La distribución, oferta, producción, almacenamiento, difusión a través de sistemas informáticos, e insultos motivados por raza, color, etc. por medios informáticos, incluyendo la negación del genocidio y crímenes de lesa humanidad", "Únicamente la producción con fines comerciales de material racista", "La distribución si supera cierto número de destinatarios mensurables"], "correct": 1}, {"q": "Desde una perspectiva de derecho comparado, ¿cuál es el aspecto que más dificulta la aplicación del Artículo 10 (propiedad intelectual) entre Partes con distintos sistemas jurídicos?", "options": ["La diferente definición de 'escala comercial' entre sistemas del civil law y el common law", "El hecho de que el Artículo 10 remite a las obligaciones de tratados internacionales de PI (ADPIC, OMPI) y a la 'legislación de dicha Parte', lo que puede crear divergencias sobre qué conductas quedan tipificadas según el derecho interno de cada Estado", "La falta de armonización en los plazos de protección de derechos de autor", "La incompatibilidad del concepto de 'derechos afines' entre sistemas jurídicos europeos y no europeos"], "correct": 1}, {"q": "Al interpretar el Artículo 5 (ataques a la integridad del sistema), el Informe Explicativo señala que la obstaculización debe ser 'grave'. ¿Qué implicación tiene este requisito para los ataques DDoS menores?", "options": ["Los ataques DDoS menores quedan totalmente impunes bajo el Convenio", "El requisito de gravedad excluye interrupciones de poca duración o sin consecuencias significativas; sin embargo, los Estados pueden tipificar conductas menos graves en su derecho interno, y el Artículo 4 puede complementar la cobertura", "El Artículo 5 no aplica a DDoS bajo ninguna circunstancia por ser ataques externos", "La gravedad se presume siempre que el ataque afecte a más de cien usuarios"], "correct": 1}, {"q": "¿Qué dificultad procesal específica genera el principio de la 'fluidez de los datos' en internet para la aplicación del Artículo 16 (conservación rápida)?", "options": ["Que los datos pueden desaparecer antes de que la solicitud judicial sea tramitada, lo que justifica el modelo de 'orden de conservación' sin revelar aún los datos, para preservar pruebas mientras se tramitan las autorizaciones formales", "Que los datos conservados pueden ser alterados por el proveedor si no existe supervisión técnica constante", "Que la conservación automática contradice el derecho a la cancelación de datos personales del RGPD europeo", "Que el plazo de 90 días es insuficiente para que los datos lleguen a ser útiles en un proceso penal"], "correct": 0}, {"q": "¿Qué análisis hace la Nota de Orientación sobre 'órdenes de presentación de datos de abonados' (Art. 18) respecto a los proveedores de cloud computing?", "options": ["Los proveedores cloud están excluidos del Artículo 18 por no ser proveedores de comunicaciones", "Los proveedores cloud pueden ser considerados 'proveedores de servicios' a efectos del Artículo 18 si ofrecen servicios de comunicación o almacenan datos en conexión con dichos servicios, siendo posible ordenarles la presentación de datos de abonados", "Las órdenes de presentación no pueden dirigirse a proveedores cloud porque los datos son de sus clientes corporativos", "Solo los proveedores cloud con sede en un Estado Parte pueden recibir órdenes de presentación"], "correct": 1}, {"q": "¿Cuál es la implicación del Artículo 44 sobre el proceso de enmienda para la actualización tecnológica del Convenio?", "options": ["Permite actualizaciones automáticas ante cambios tecnológicos sin necesidad de ratificación", "El proceso de enmienda requiere propuesta de Parte, opinión del CDPC, adopción por el Comité de Ministros y aceptación por las Partes, lo que lo hace lento; por eso el sistema de 'Notas de Orientación' fue desarrollado como mecanismo más ágil de interpretación adaptativa", "Cualquier Estado puede bloquear una enmienda si considera que afecta sus intereses soberanos", "El Convenio se actualiza automáticamente al incorporarse nuevos tratados internacionales sobre ciberdelincuencia"], "correct": 1}, {"q": "En la estructura del Segundo Protocolo Adicional, ¿cuál es la innovación más significativa respecto al modelo clásico de asistencia judicial mutua del Convenio principal?", "options": ["La creación de un tribunal permanente de ciberdelincuencia", "La introducción de canales de cooperación directa entre autoridades competentes y proveedores de servicios en otras jurisdicciones, reduciendo la dependencia de comisiones rogatorias formales", "La obligación de compartir bases de datos de personas investigadas en tiempo real", "La eliminación del requisito de doble tipificación en todos los supuestos"], "correct": 1}, {"q": "Según las Notas de Orientación, ¿bajo qué artículo del Convenio se pueden investigar los aspectos de la injerencia en procesos electorales por medios informáticos?", "options": ["El Convenio no aplica a procesos electorales al ser materia de derecho constitucional", "Artículos 4 y 5 (si se dañan sistemas de votación), Artículo 7 (si se falsifican datos electorales), y Artículo 3 (si se interceptan comunicaciones de candidatos o partidos), según la modalidad concreta", "Solo el Artículo 2 (acceso ilícito a los sistemas electorales)", "El Primer Protocolo Adicional es el único aplicable a injerencia electoral"], "correct": 1}, {"q": "¿Cuál es el fundamento por el que el Artículo 25 prohíbe denegar asistencia mutua por naturaleza 'fiscal' del delito?", "options": ["Porque los delitos fiscales son siempre más graves que los delitos informáticos", "Para evitar que la excepción fiscal, tradicionalmente usada en el derecho clásico de extradición para proteger la soberanía tributaria, se convierta en un obstáculo para investigar delitos informáticos que tengan un componente tributario", "Porque el Convenio crea una competencia exclusiva en materia fiscal para los Estados Parte", "Para armonizar con el GAFI (FATF) en materia de persecución de delitos financieros"], "correct": 1}, {"q": "¿Qué diferencia existe entre las 'emisiones electromagnéticas' mencionadas en el Artículo 3 y la interceptación estándar de comunicaciones?", "options": ["Las emisiones electromagnéticas solo pueden ser interceptadas con autorización de la OTAN", "La inclusión de emisiones electromagnéticas amplía la cobertura a técnicas pasivas de captura de datos que se 'irradian' del sistema sin pasar por redes (como TEMPEST), no solo a la interceptación de tráfico de red", "Las emisiones electromagnéticas solo son relevantes para instalaciones militares", "No existe diferencia jurídica relevante; es solo una precisión técnica"], "correct": 1}, {"q": "En el análisis del Artículo 26 (información espontánea), ¿qué principio procesal de derecho interno puede generar conflicto con la transmisión proactiva de información?", "options": ["El principio de imparcialidad del juez instructor", "El principio de especialidad o restricción de uso, que impide utilizar información obtenida en una investigación para fines distintos de los que motivaron su obtención, y que podría limitar la facultad de compartirla espontáneamente", "El principio de publicidad del proceso penal", "El principio de presunción de inocencia del investigado"], "correct": 1}, {"q": "¿Cuál es la implicación del Artículo 15.1 sobre proporcionalidad para las órdenes de conservación masiva de metadatos emitidas por algunos Estados?", "options": ["El Artículo 15.1 no aplica a metadatos ya que no son datos de contenido", "El Artículo 15.1 exige que cualquier poder del Convenio, incluyendo la conservación, esté sujeto a condiciones de proporcionalidad y derechos humanos, lo que pone en tensión las órdenes de conservación masiva e indiferenciada con las obligaciones del Convenio", "El Artículo 15.1 solo aplica a interceptaciones de contenido, no a conservación", "La conservación masiva está expresamente autorizada por el Artículo 16.1 sin restricciones adicionales"], "correct": 1}, {"q": "Al articular la responsabilidad por 'botnets' bajo el Artículo 2, ¿cuál es el elemento subjetivo que presenta mayor dificultad probatoria?", "options": ["Demostrar que el dispositivo comprometido era un 'sistema informático' en el sentido del Convenio", "Probar que el operador de la botnet tenía conocimiento de que cada acceso a los equipos zombi era 'deliberado e ilegítimo', especialmente cuando el control se ejerce a través de capas de intermediación técnica", "Determinar la ubicación geográfica del servidor de comando y control", "Identificar a las víctimas cuyos equipos fueron comprometidos"], "correct": 1}, {"q": "¿Qué contradicción aparente existe entre la obligación del Artículo 12 de sancionar a personas jurídicas y la reserva del Artículo 12.3 que permite sanciones civiles o administrativas?", "options": ["El Convenio exige explícitamente sanciones penales pero la reserva lo contradice", "No hay contradicción: el Convenio adopta una aproximación flexible reconociendo que no todos los sistemas jurídicos admiten responsabilidad penal de personas jurídicas; lo esencial es que haya una sanción efectiva y disuasoria, sea cual sea su naturaleza jurídica", "La reserva del párrafo 3 solo aplica a personas jurídicas de economía social", "El párrafo 3 fue añadido a instancias de los sistemas de common law que no reconocen la personalidad jurídica penal"], "correct": 1}, {"q": "En relación con el Artículo 19 y la extensión del registro informático, ¿cuál es el fundamento jurídico que justifica extenderse a un sistema conectado sin nueva orden judicial?", "options": ["La teoría del 'plain view' adaptada al entorno digital", "El principio de continuidad de la investigación cuando los datos son lícitamente accesibles desde el sistema inicialmente registrado; la orden inicial cubre el acceso a datos conectados que son extensión lógica del sistema registrado", "El mandato general de cooperación del Artículo 23", "La doctrina de emergencia digital que suspende requisitos de autorización cuando hay riesgo de pérdida de pruebas"], "correct": 1}, {"q": "¿Cuál es el alcance de la expresión 'a escala comercial' en el Artículo 10 para la tipificación de infracciones de propiedad intelectual?", "options": ["Solo aplica a empresas registradas con actividad comercial demostrable", "Según el Informe Explicativo, excluye las infracciones privadas sin fines lucrativos; incluye la distribución masiva gratuita si existe finalidad comercial indirecta (como publicidad), pero su interpretación exacta depende del derecho interno de cada Parte", "Requiere demostración de ingresos superiores a un umbral definido por cada Estado", "Toda distribución en Internet se considera automáticamente 'a escala comercial'"], "correct": 1}, {"q": "Desde la perspectiva del Informe Explicativo, ¿por qué se diseñó el Artículo 6 (abuso de dispositivos) de manera separada y no como mera tentativa de los delitos de los artículos 2 a 5?", "options": ["Para simplificar la carga probatoria de los fiscales al evitar tener que demostrar el delito base", "Porque la producción, venta y distribución de herramientas de intrusión representa un estadio previo a la tentativa con peligrosidad propia; tipificarlos autónomamente permite intervenir antes de que se materialice el ataque y sancionar a quienes suministran el ecosistema delictivo", "Por influencia del modelo alemán de 'delitos de preparación' sin equivalente en otros sistemas", "Para cubrir exclusivamente a los fabricantes de hardware malicioso, no a los distribuidores"], "correct": 1}, {"q": "¿Cómo interactúa el principio de 'ne bis in idem' con el Artículo 22 cuando varias Partes ejercen simultáneamente jurisdicción sobre el mismo delito informático?", "options": ["El Convenio establece expresamente la prioridad del ne bis in idem sobre la jurisdicción concurrente", "El Artículo 22.5 manda consultas entre Partes para determinar la jurisdicción más adecuada, lo que puede resolver el conflicto antes de que se genere una violación del ne bis in idem; sin embargo, el Convenio no establece reglas sustantivas sobre ne bis in idem transnacional", "El ne bis in idem no aplica en el ámbito de la ciberdelincuencia según el Informe Explicativo", "El Tribunal Europeo de Derechos Humanos resuelve automáticamente estos conflictos"], "correct": 1}, {"q": "¿Cuál es la razón técnica por la que el Artículo 17 requiere un mecanismo adicional más allá del Artículo 16 para la conservación de datos de tráfico?", "options": ["Los datos de tráfico tienen plazos de conservación más cortos que los de contenido", "Porque las comunicaciones de Internet frecuentemente pasan por múltiples proveedores en distintos Estados; si solo se conservan los datos del último proveedor conocido, se pierde la cadena completa; el Artículo 17 asegura la revelación suficiente para rastrear toda la ruta", "Los datos de tráfico requieren autorización especial del Parlamento según varios sistemas constitucionales", "El Artículo 17 solo aplica cuando el Artículo 16 ha sido invocado sin resultado satisfactorio"], "correct": 1}, {"q": "En el análisis del Segundo Protocolo Adicional, ¿qué salvaguarda específica se establece para proteger los derechos fundamentales en las divulgaciones directas a proveedores de servicios extranjeros?", "options": ["No se requieren salvaguardas adicionales al tratarse de datos de abonados", "El Segundo Protocolo establece un marco de condiciones que incluye: limitación al tipo de datos solicitados, control por autoridades competentes, notificación en ciertos casos, y la posibilidad de que el Estado del proveedor detenga la divulgación si afecta sus intereses", "La única salvaguarda es que las solicitudes deben ser aprobadas por el CDPC", "Los proveedores pueden negarse a cualquier solicitud sin consecuencias jurídicas"], "correct": 1}, {"q": "¿Qué limitación fundamental tienen las Notas de Orientación del Convenio de Budapest desde el punto de vista de las fuentes del derecho internacional?", "options": ["Son vinculantes solo para los Estados que las han aprobado formalmente", "Son instrumentos de interpretación no vinculantes que facilitan la aplicación uniforme del Convenio, pero no pueden crear nuevas obligaciones ni modificar el texto convencional; su valor es el de la práctica interpretativa de los propios redactores y aplicadores del Convenio", "Solo pueden ser invocadas ante el Tribunal Europeo de Derechos Humanos", "Tienen el mismo valor jurídico que los Informes Explicativos de los Protocolos"], "correct": 1}, {"q": "¿Cuál es la implicación práctica del Artículo 22.3 que obliga a los Estados a ejercer jurisdicción sobre delitos del Artículo 24.1 cuando el sospechoso está en su territorio y no puede ser extraditado por razón de nacionalidad?", "options": ["Crea una obligación de 'extraditar o juzgar' (aut dedere aut judicare) para los delitos del Convenio cuando el Estado no extradita a sus propios nacionales", "Permite que el sospechoso sea juzgado en ausencia en el Estado requirente", "Obliga al Estado a crear legislación especial si el delito no está tipificado en su derecho interno", "Solo aplica cuando el delito fue cometido contra ciudadanos del Estado requirente"], "correct": 0}, {"q": "En el contexto de la Nota de Orientación sobre ataques a infraestructuras críticas, ¿qué problema de tipificación surge cuando el atacante no sabía que el sistema era parte de infraestructura crítica?", "options": ["El delito queda automáticamente despenalizado por falta de dolo específico", "El Convenio no tipifica la criticidad de la infraestructura como elemento del tipo; los artículos 4 y 5 solo requieren dolo de dañar datos o de obstaculizar gravemente el sistema, por lo que el desconocimiento de la naturaleza crítica no afecta la tipicidad base, aunque sí podría incidir en las circunstancias agravantes del derecho interno", "Solo puede imputarse el Artículo 2 (acceso ilícito) como delito base", "El Segundo Protocolo establece una presunción iuris et de iure de conocimiento de la criticidad"], "correct": 1}, {"q": "¿Cuál es el problema de territorialidad que genera el Artículo 3 (interceptación ilícita) aplicado a las comunicaciones que transitan por satélites?", "options": ["Las comunicaciones satelitales están excluidas del Artículo 3 por no ser 'transmisiones no públicas'", "La interceptación desde el espacio puede ocurrir fuera del territorio de cualquier Estado parte, generando dudas sobre cuál Parte tiene jurisdicción; el Artículo 22 prevé criterios de territorialidad e identificación del sospechoso, pero los medios técnicos en órbita complican la determinación del 'lugar' del delito", "Las comunicaciones satelitales son siempre públicas y no pueden ser protegidas por el Artículo 3", "El Convenio remite a los tratados espaciales para resolver la jurisdicción sobre comunicaciones satelitales"], "correct": 1}, {"q": "Al analizar el régimen de reservas del Artículo 42, ¿qué consecuencia jurídica tiene que el Artículo disponga que 'no podrán formularse otras reservas'?", "options": ["Los Estados no pueden tener disposiciones más protectoras en su derecho interno", "El sistema de reservas es taxativo: fuera de las expresamente autorizadas, cualquier declaración limitando obligaciones del Convenio sería inválida bajo el derecho internacional de los tratados (Art. 19 CVDT), lo que garantiza un nivel mínimo uniforme de compromisos entre las Partes", "Los Estados pueden crear reservas adicionales si obtienen el voto unánime de las demás Partes", "Las reservas no previstas expresamente se tratan como meras declaraciones políticas sin efecto jurídico"], "correct": 1}, {"q": "¿Cuál es la relación jurídica entre el Convenio de Budapest y el Reglamento General de Protección de Datos (RGPD) de la UE en el tratamiento de datos para investigación penal?", "options": ["El Convenio tiene primacía sobre el RGPD para todos los Estados miembros de la UE", "Son instrumentos con ámbitos distintos y complementarios; el Convenio establece poderes de investigación penal, mientras el RGPD (y la Directiva de Protección de Datos para fines penales) establece las condiciones de licitud del tratamiento; las salvaguardas del Artículo 15 del Convenio deben ser interpretadas a la luz del estándar de derechos fundamentales europeo, que incluye el RGPD", "El RGPD deroga implícitamente las disposiciones del Convenio que sean incompatibles", "El Convenio y el RGPD son mutuamente excluyentes y no pueden aplicarse simultáneamente"], "correct": 1}, {"q": "¿Qué implica para la arquitectura de Internet la Nota de Orientación sobre la noción de 'sistema informático', al incluir routers, switches y elementos de red en esa definición?", "options": ["Que el ISP es siempre responsable como coautor de los delitos cometidos en su red", "Que el acceso no autorizado a dispositivos de infraestructura de red (routers, switches) queda cubierto por el Artículo 2, ampliando el ámbito del Convenio a los ataques a la infraestructura lógica de Internet misma, con independencia de que el objetivo final sea un servidor de datos", "Que los ataques a routers solo pueden ser perseguidos bajo el Artículo 5", "Que los fabricantes de hardware de red tienen responsabilidad penal por los delitos facilitados por vulnerabilidades de sus productos"], "correct": 1}, {"q": "¿Cuál es el análisis doctrinal sobre si el Convenio de Budapest puede servir de base para la persecución del ciberespionaje estatal?", "options": ["El Convenio expresamente incluye el ciberespionaje estatal en el Artículo 2", "El Convenio no distingue si el autor es un agente estatal o un particular; en principio, el acceso ilícito por un agente estatal extranjero podría tipificarse bajo el Artículo 2, pero la persecución práctica choca con la inmunidad soberana y la falta de voluntad política, así como con las excepciones de soberanía y seguridad del Artículo 27", "El ciberespionaje estatal está expresamente excluido por el Artículo 39.3", "El Segundo Protocolo Adicional creó un régimen específico para el ciberespionaje estatal"], "correct": 1}, {"q": "En el Segundo Protocolo Adicional, ¿bajo qué condiciones puede un Estado Parte negarse a ejecutar una solicitud de divulgación directa a un proveedor de servicios?", "options": ["Nunca; la divulgación directa es obligatoria bajo el Segundo Protocolo", "Cuando la ejecución afecte intereses esenciales de seguridad nacional, el orden público, o derechos fundamentales del Estado requerido, o cuando la solicitud no cumpla los requisitos formales establecidos en el Protocolo", "Solo cuando el proveedor se niegue voluntariamente", "Cuando el delito investigado no esté tipificado en el derecho interno del Estado del proveedor"], "correct": 1}, {"q": "¿Qué problema genera la aplicación del Artículo 10 a plataformas de streaming en Estados donde la distinción entre infracción civil y penal de propiedad intelectual no está claramente delimitada?", "options": ["El streaming no está cubierto por el Artículo 10 al no implicar 'datos informáticos' en sentido estricto", "El Artículo 10 remite al derecho interno de cada Parte para la definición de la infracción; en Estados donde la línea civil/penal es difusa, la condición de 'escala comercial' se convierte en el elemento determinante para la criminalización, creando inseguridad jurídica para plataformas legítimas que operan a gran escala", "Las plataformas de streaming son expresamente excluidas del Artículo 10 por su doble condición de proveedor y usuario", "El Convenio solo aplica a infracciones de distribución física, no a distribución digital"], "correct": 1}, {"q": "¿Cuál es la razón por la que el Informe Explicativo señala que el Convenio no establece un mínimo de pena para los delitos tipificados (más allá del umbral de extradición)?", "options": ["Porque las penas mínimas son inconstitucionales en la mayoría de los sistemas europeos", "Por respeto a la diversidad de sistemas penales de los Estados Parte y al principio de proporcionalidad que cada sistema debe garantizar internamente; el Convenio exige que las sanciones sean 'efectivas, proporcionadas y disuasorias' (Art. 13) sin imponer cuantías específicas", "Porque el CDPC no alcanzó consenso sobre los mínimos durante las negociaciones", "Porque la Convención Europea de Derechos Humanos prohíbe que los tratados internacionales fijen penas mínimas"], "correct": 1}, {"q": "Analizando sistemáticamente el Convenio y sus Protocolos, ¿cuál es el 'bien jurídico supraindividual' que subyace a toda la arquitectura de tipificaciones del Capítulo II?", "options": ["La seguridad nacional de los Estados Parte", "La confianza en los sistemas de información como infraestructura social fundamental, que abarca tanto la dimensión individual (confidencialidad, integridad, disponibilidad de datos propios) como la colectiva (fiabilidad del ciberespacio como espacio de comunicación e interacción legítima)", "El orden económico internacional basado en el comercio electrónico seguro", "La soberanía digital de los Estados como nuevo atributo de la estatalidad contemporánea"], "correct": 1}, {"q": "Desde una perspectiva crítica integral, ¿cuál es la principal limitación estructural del Convenio de Budapest para enfrentar los desafíos actuales de la ciberdelincuencia?", "options": ["La falta de un mecanismo de sanción para Estados que incumplan sus obligaciones", "La tensión entre su diseño originario de 2001 (previo al auge de redes sociales, cloud computing, IA y criptomonedas) y la realidad tecnológica actual; el sistema de 'Notas de Orientación' y el Segundo Protocolo son respuestas adaptativas, pero sin reforma sustantiva el Convenio puede quedar funcionalmente desfasado respecto a fenómenos como la IA generativa maliciosa o los ciberataques de Estado", "La restricción geográfica al Consejo de Europa que limita su aplicación global", "La ausencia de un tribunal internacional especializado en ciberdelincuencia que aplique el Convenio de forma uniforme"], "correct": 1}]};
+
+
+// ============================================================
+// CYBER TEST — Motor de sonido retro (Web Audio API, sin assets)
+// ============================================================
+
+const SFX = (() => {
+  let ctx = null;
+  let muted = false;
+
+  function getCtx(){
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (ctx.state === "suspended") ctx.resume();
+    return ctx;
+  }
+
+  function tone(freq, duration, opts = {}) {
+    if (muted) return;
+    const ac = getCtx();
+    const t0 = ac.currentTime;
+    const osc = ac.createOscillator();
+    const gain = ac.createGain();
+    osc.type = opts.type || "square";
+    osc.frequency.setValueAtTime(freq, t0);
+    if (opts.glideTo) {
+      osc.frequency.linearRampToValueAtTime(opts.glideTo, t0 + duration);
+    }
+    const peak = opts.volume ?? 0.18;
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(peak, t0 + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.02);
+  }
+
+  function noiseBurst(duration, opts = {}) {
+    if (muted) return;
+    const ac = getCtx();
+    const bufferSize = ac.sampleRate * duration;
+    const buffer = ac.createBuffer(1, bufferSize, ac.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+    const src = ac.createBufferSource();
+    src.buffer = buffer;
+    const filter = ac.createBiquadFilter();
+    filter.type = opts.filterType || "lowpass";
+    filter.frequency.value = opts.filterFreq || 1200;
+    const gain = ac.createGain();
+    gain.gain.value = opts.volume ?? 0.2;
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ac.destination);
+    src.start();
+  }
+
+  return {
+    setMuted(v){ muted = v; },
+    isMuted(){ return muted; },
+
+    // UI / navegación
+    move(){ tone(440, 0.05, {type:"square", volume:0.1}); },
+    select(){ tone(660, 0.08, {type:"square", volume:0.14}); tone(880,0.07,{type:"square",volume:0.08}); },
+    back(){ tone(220, 0.08, {type:"triangle", volume:0.12}); },
+
+    // Gameplay
+    correct(){
+      tone(523.25, 0.09, {type:"square", volume:0.16});
+      setTimeout(()=>tone(659.25, 0.09, {type:"square", volume:0.16}), 90);
+      setTimeout(()=>tone(987.77, 0.14, {type:"square", volume:0.18}), 180);
+    },
+    wrong(){
+      tone(180, 0.18, {type:"sawtooth", volume:0.18, glideTo:90});
+      noiseBurst(0.12, {filterFreq:500, volume:0.1});
+    },
+    stepCloser(){
+      tone(330, 0.05, {type:"square", volume:0.08, glideTo:420});
+    },
+    stepAway(){
+      tone(330, 0.07, {type:"square", volume:0.1, glideTo:220});
+    },
+    countdownTick(){ tone(880, 0.04, {type:"square", volume:0.08}); },
+
+    win(){
+      const seq = [523.25, 659.25, 783.99, 1046.5];
+      seq.forEach((f,i)=> setTimeout(()=>tone(f, 0.18, {type:"square", volume:0.2}), i*140));
+      setTimeout(()=> tone(1318.5, 0.4, {type:"square", volume:0.22}), seq.length*140);
+    },
+    lose(){
+      const seq = [392, 349.23, 293.66, 220];
+      seq.forEach((f,i)=> setTimeout(()=>tone(f, 0.26, {type:"sawtooth", volume:0.18}), i*180));
+    },
+    siren(){
+      const ac = getCtx();
+      if (muted) return;
+      const t0 = ac.currentTime;
+      const osc = ac.createOscillator();
+      const gain = ac.createGain();
+      osc.type = "sine";
+      gain.gain.value = 0.1;
+      osc.frequency.setValueAtTime(500, t0);
+      osc.frequency.linearRampToValueAtTime(900, t0+0.3);
+      osc.frequency.linearRampToValueAtTime(500, t0+0.6);
+      osc.connect(gain); gain.connect(ac.destination);
+      osc.start(t0); osc.stop(t0+0.6);
+    },
+    shutter(){
+      noiseBurst(0.05, {filterFreq:3000, volume:0.15, filterType:"highpass"});
+    }
+  };
+})();
+
+
+// ============================================================
+// CYBER TEST — Motor principal del juego
+// ============================================================
+
+const TOTAL_QUESTIONS = 10;
+const MAX_MISSES = 2; // al segundo fallo, el delincuente escapa
+
+const state = {
+  character: null,
+  city: null,
+  difficulty: null,
+  questions: [],
+  qIndex: 0,
+  misses: 0,
+  hits: 0,
+  distanceCells: 5, // de 0 (atrapado) a 10 (huyó) — empieza a mitad de camino
+  locked: false
+};
+
+// ---------- Utilidades ----------
+function shuffle(arr){
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function pickQuestions(levelId, count){
+  const bank = QUESTION_BANKS[levelId];
+  const chosen = shuffle(bank).slice(0, count);
+  // mezclar también el orden de las alternativas, recalculando el índice correcto
+  return chosen.map(q => {
+    const order = shuffle([0,1,2,3]);
+    const options = order.map(i => q.options[i]);
+    const correct = order.indexOf(q.correct);
+    return { q: q.q, options, correct };
+  });
+}
+
+function $(sel){ return document.querySelector(sel); }
+function $all(sel){ return Array.from(document.querySelectorAll(sel)); }
+
+function showView(id){
+  $all('.view').forEach(v => v.classList.remove('active'));
+  $('#' + id).classList.add('active');
+}
+
+function flashScreen(color){
+  const f = $('#flicker');
+  f.style.background = color;
+  f.style.opacity = '0.5';
+  requestAnimationFrame(()=>{
+    f.style.transition = 'opacity .25s ease';
+    f.style.opacity = '0';
+    setTimeout(()=>{ f.style.transition=''; }, 260);
+  });
+}
+
+// ============================================================
+// SELECCIÓN: PERSONAJE
+// ============================================================
+function renderCharacterGrid(){
+  const grid = $('#character-grid');
+  grid.innerHTML = '';
+  CHARACTERS.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.id = c.id;
+    card.innerHTML = `
+      <div class="icon-box">${ICONS[c.id]}</div>
+      <div class="label">${c.label}</div>
+      <div class="desc">${c.desc}</div>
+    `;
+    card.addEventListener('click', () => {
+      SFX.select();
+      $all('#character-grid .card').forEach(x=>x.classList.remove('selected'));
+      card.classList.add('selected');
+      state.character = c;
+      $('#btn-char-next').disabled = false;
+    });
+    grid.appendChild(card);
+  });
+}
+
+// ============================================================
+// SELECCIÓN: CIUDAD
+// ============================================================
+function renderCityGrid(){
+  const grid = $('#city-grid');
+  grid.innerHTML = '';
+  CITIES.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.id = c.id;
+    card.innerHTML = `
+      <div class="icon-box">${ICONS.city}</div>
+      <div class="label">${c.label}</div>
+      <div class="desc">${c.desc}</div>
+    `;
+    card.addEventListener('click', () => {
+      SFX.select();
+      $all('#city-grid .card').forEach(x=>x.classList.remove('selected'));
+      card.classList.add('selected');
+      state.city = c;
+      $('#btn-city-next').disabled = false;
+    });
+    grid.appendChild(card);
+  });
+}
+
+// ============================================================
+// SELECCIÓN: DIFICULTAD
+// ============================================================
+function renderDifficultyGrid(){
+  const grid = $('#difficulty-grid');
+  grid.innerHTML = '';
+  const iconKeys = { basico:'diffEasy', intermedio:'diffMed', experto:'diffHard' };
+  DIFFICULTIES.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.id = d.id;
+    card.innerHTML = `
+      <div class="icon-box">${ICONS[iconKeys[d.id]]}</div>
+      <div class="label" style="color:${d.color}">${d.label}</div>
+      <div class="desc">${d.desc}</div>
+    `;
+    card.addEventListener('click', () => {
+      SFX.select();
+      $all('#difficulty-grid .card').forEach(x=>x.classList.remove('selected'));
+      card.classList.add('selected');
+      state.difficulty = d;
+      $('#btn-diff-next').disabled = false;
+    });
+    grid.appendChild(card);
+  });
+}
+
+// ============================================================
+// BRIEFING
+// ============================================================
+function renderBriefing(){
+  const el = $('#briefing-card');
+  el.innerHTML = `
+    <p><b style="color:var(--green)">${state.character.label}</b>, se reporta un ciberdelincuente activo en
+    <b style="color:var(--cyan)">${state.city.label}</b>.</p>
+    <p>Nivel de la investigación: <b style="color:${state.difficulty.color}">${state.difficulty.label}</b>.</p>
+    <p>Tendrás <b>10 preguntas</b> del Convenio de Budapest, sus Protocolos, Informes Explicativos
+    y Notas de Orientación del T-CY para sustentar cada movimiento de tu persecución.</p>
+    <p style="color:var(--amber)">Un fallo aleja al sospechoso. Dos fallos y escapa. ¡Buena suerte, agente!</p>
+  `;
+}
+
+// ============================================================
+// SKYLINE de la ciudad elegida
+// ============================================================
+function renderSkyline(){
+  $('#city-skyline').innerHTML = state.city.skyline;
+}
+
+// ============================================================
+// GAMEPLAY
+// ============================================================
+function startGame(){
+  state.questions = pickQuestions(state.difficulty.id, TOTAL_QUESTIONS);
+  state.qIndex = 0;
+  state.misses = 0;
+  state.hits = 0;
+  state.distanceCells = 5;
+  state.locked = false;
+
+  $('#hud-level').textContent = state.difficulty.label;
+  $('#hud-city').textContent = state.city.label;
+  renderSkyline();
+  setSpriteContent('#sprite-hero', state.character.sprite);
+  setSpriteContent('#sprite-villain', SPRITES.villain);
+  resetLives();
+  renderDistanceMeter();
+  positionSprites();
+  showView('view-game');
+  SFX.siren();
+  renderQuestion();
+}
+
+function setSpriteContent(sel, svg){
+  $(sel).innerHTML = svg;
+}
+
+function resetLives(){
+  const lives = $('#lives');
+  lives.innerHTML = '';
+  for (let i=0; i<MAX_MISSES; i++){
+    const dot = document.createElement('span');
+    dot.className = 'life-dot';
+    lives.appendChild(dot);
+  }
+}
+
+function updateLives(){
+  const dots = $all('#lives .life-dot');
+  dots.forEach((d, i) => {
+    d.classList.toggle('lost', i < state.misses);
+  });
+}
+
+function renderDistanceMeter(){
+  const meter = $('#distance-meter');
+  meter.innerHTML = '';
+  for (let i=0; i<10; i++){
+    const cell = document.createElement('div');
+    cell.className = 'dist-cell';
+    if (i < (10 - state.distanceCells)) {
+      cell.classList.add('filled'); // representa "terreno recuperado" hacia el delincuente
+    }
+    meter.appendChild(cell);
+  }
+}
+
+// distanceCells: 10 = máxima distancia (huye), 0 = atrapado
+function positionSprites(){
+  const heroEl = $('#sprite-hero');
+  const villainEl = $('#sprite-villain');
+  const heroLeft = 6;
+  const maxVillainLeft = 82; // % máximo de distancia
+  const minVillainLeft = 14; // % mínimo (casi alcanzado)
+  const pct = state.distanceCells / 10;
+  const villainLeft = minVillainLeft + pct * (maxVillainLeft - minVillainLeft);
+  heroEl.style.left = heroLeft + '%';
+  villainEl.style.left = villainLeft + '%';
+}
+
+function renderQuestion(){
+  if (state.qIndex >= TOTAL_QUESTIONS) {
+    return endGame(true);
+  }
+  state.locked = false;
+  const q = state.questions[state.qIndex];
+  $('#hud-qnum').textContent = `${state.qIndex+1}/${TOTAL_QUESTIONS}`;
+  $('#qmeta-level').textContent = `NIVEL: ${state.difficulty.label}`;
+  $('#qmeta-counter').textContent = `PREGUNTA ${state.qIndex+1}/${TOTAL_QUESTIONS}`;
+  $('#qtext').textContent = q.q;
+
+  const tags = ['A','B','C','D'];
+  const opts = $('#options');
+  opts.innerHTML = '';
+  q.options.forEach((optText, i) => {
+    const div = document.createElement('div');
+    div.className = 'opt';
+    div.dataset.index = i;
+    div.innerHTML = `<span class="tag">${tags[i]})</span><span>${optText}</span>`;
+    div.addEventListener('click', () => handleAnswer(i, div));
+    opts.appendChild(div);
+  });
+
+  const banner = $('#feedback-banner');
+  banner.className = '';
+  banner.textContent = '';
+}
+
+function handleAnswer(selectedIndex, el){
+  if (state.locked) return;
+  state.locked = true;
+  const q = state.questions[state.qIndex];
+  const correctIndex = q.correct;
+  const allOpts = $all('#options .opt');
+  allOpts.forEach(o => o.classList.add('disabled'));
+
+  const banner = $('#feedback-banner');
+
+  if (selectedIndex === correctIndex) {
+    el.classList.add('correct');
+    state.hits++;
+    state.distanceCells = Math.max(0, state.distanceCells - 1);
+    SFX.correct();
+    SFX.stepCloser();
+    bumpSprite('#sprite-hero');
+    banner.textContent = '✔ RESPUESTA CORRECTA — TE ACERCAS';
+    banner.className = 'show good';
+    flashScreen('rgba(57,255,106,.5)');
+  } else {
+    el.classList.add('wrong');
+    allOpts[correctIndex].classList.add('locked-correct');
+    state.misses++;
+    state.distanceCells = Math.min(10, state.distanceCells + 2);
+    SFX.wrong();
+    SFX.stepAway();
+    bumpSprite('#sprite-villain', 'flee');
+    banner.textContent = '✘ RESPUESTA INCORRECTA — SE ALEJA';
+    banner.className = 'show bad';
+    flashScreen('rgba(255,46,108,.45)');
+  }
+
+  renderDistanceMeter();
+  positionSprites();
+  updateLives();
+
+  setTimeout(() => {
+    state.qIndex++;
+    if (state.misses >= MAX_MISSES) {
+      endGame(false);
+    } else if (state.distanceCells <= 0 || state.qIndex >= TOTAL_QUESTIONS) {
+      endGame(true);
+    } else {
+      renderQuestion();
+    }
+  }, 1300);
+}
+
+function bumpSprite(sel, extraClass){
+  const el = $(sel);
+  el.classList.remove('bump','flee');
+  void el.offsetWidth; // reflow para reiniciar animación
+  el.classList.add(extraClass || 'bump');
+  setTimeout(()=> el.classList.remove('bump','flee'), 600);
+}
+
+// ============================================================
+// FIN DE PARTIDA
+// ============================================================
+function endGame(won){
+  if (won) {
+    setSpriteContent('#endstage', '');
+    const stage = $('#endstage');
+    stage.innerHTML = `
+      <div class="sprite cheer" style="left:30%; bottom:10%; position:absolute;">${state.character.sprite}</div>
+      <div class="sprite sad" style="left:60%; bottom:10%; position:absolute;">${SPRITES.villainCaged}</div>
+    `;
+    const accuracy = Math.round((state.hits / (state.hits + state.misses || 1)) * 100);
+    $('#win-summary').innerHTML = `
+      Agente: <b style="color:var(--green)">${state.character.label}</b> ·
+      Ciudad: <b style="color:var(--cyan)">${state.city.label}</b> ·
+      Nivel: <b style="color:${state.difficulty.color}">${state.difficulty.label}</b><br>
+      Aciertos: ${state.hits}/${state.hits+state.misses} · Precisión: ${accuracy}%
+    `;
+    showView('view-win');
+    SFX.win();
+  } else {
+    const stage = $('#endstage2');
+    stage.innerHTML = `
+      <div class="sprite sad" style="left:25%; bottom:10%; position:absolute;">${state.character.sprite}</div>
+      <div class="sprite dance" style="left:65%; bottom:10%; position:absolute;">${SPRITES.villain}</div>
+    `;
+    $('#lose-summary').innerHTML = `
+      Agente: <b style="color:var(--magenta)">${state.character.label}</b> ·
+      Ciudad: <b style="color:var(--cyan)">${state.city.label}</b> ·
+      Nivel: <b style="color:${state.difficulty.color}">${state.difficulty.label}</b><br>
+      Aciertos antes de la fuga: ${state.hits} · Preguntas respondidas: ${state.hits+state.misses}
+    `;
+    showView('view-lose');
+    SFX.lose();
+  }
+}
+
+// ============================================================
+// CAPTURA / COMPARTIR
+// ============================================================
+function drawShareCard(won, callback){
+  const canvas = $('#share-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+
+  // fondo
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, '#0a1420');
+  grad.addColorStop(1, '#03060c');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,H);
+
+  // scanlines sutiles
+  ctx.fillStyle = 'rgba(0,0,0,0.08)';
+  for (let y=0; y<H; y+=3) ctx.fillRect(0,y,W,1);
+
+  // marco
+  ctx.strokeStyle = won ? '#39ff6a' : '#ff2e6c';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(14,14,W-28,H-28);
+
+  // título
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#39ff6a';
+  ctx.font = "bold 46px monospace";
+  ctx.shadowColor = '#39ff6a';
+  ctx.shadowBlur = 18;
+  ctx.fillText('CYBER TEST', W/2, 100);
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = won ? '#39ff6a' : '#ff2e6c';
+  ctx.font = "bold 34px monospace";
+  ctx.shadowColor = ctx.fillStyle;
+  ctx.shadowBlur = 14;
+  ctx.fillText(won ? 'DELINCUENTE CAPTURADO' : 'EL SOSPECHOSO ESCAPÓ', W/2, 160);
+  ctx.shadowBlur = 0;
+
+  // datos
+  ctx.fillStyle = '#cfe9e2';
+  ctx.font = "26px monospace";
+  const accuracy = Math.round((state.hits / (state.hits + state.misses || 1)) * 100);
+  const lines = [
+    `Agente: ${state.character.label}`,
+    `Ciudad: ${state.city.label}`,
+    `Nivel: ${state.difficulty.label}`,
+    `Aciertos: ${state.hits} / ${state.hits + state.misses}  ·  Precisión: ${accuracy}%`
+  ];
+  lines.forEach((l, i) => ctx.fillText(l, W/2, 230 + i*44));
+
+  // badge
+  ctx.beginPath();
+  ctx.arc(W/2, 470, 90, 0, Math.PI*2);
+  ctx.strokeStyle = won ? '#39ff6a' : '#ff2e6c';
+  ctx.lineWidth = 4;
+  ctx.setLineDash([10,8]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.font = "60px monospace";
+  ctx.fillStyle = won ? '#39ff6a' : '#ff2e6c';
+  ctx.fillText(won ? '✔' : '✘', W/2, 490);
+
+  ctx.fillStyle = '#46625c';
+  ctx.font = "20px monospace";
+  ctx.fillText('Convenio de Budapest · Protocolos · Informes Explicativos · Notas T-CY', W/2, 600);
+
+  canvas.toBlob(blob => callback(blob), 'image/png');
+}
+
+function captureAndDownload(won){
+  SFX.shutter();
+  drawShareCard(won, (blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cybertest_${won ? 'victoria' : 'derrota'}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=> URL.revokeObjectURL(url), 2000);
+  });
+}
+
+async function shareResult(won){
+  SFX.shutter();
+  drawShareCard(won, async (blob) => {
+    const file = new File([blob], 'cybertest.png', { type: 'image/png' });
+    const text = won
+      ? `¡Atrapé al ciberdelincuente en CYBER TEST! Nivel ${state.difficulty.label} en ${state.city.label}.`
+      : `El sospechoso escapó en CYBER TEST... ¡a por la revancha! Nivel ${state.difficulty.label} en ${state.city.label}.`;
+
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: 'CYBER TEST',
+          text
+        });
+        return;
+      } catch (e) { /* el usuario canceló o falló: caemos a descarga */ }
+    }
+    // Fallback: descargar imagen
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cybertest_${won ? 'victoria' : 'derrota'}.png`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(()=> URL.revokeObjectURL(url), 2000);
+  });
+}
+
+// ============================================================
+// NAVEGACIÓN GENERAL
+// ============================================================
+function init(){
+  renderCharacterGrid();
+  renderCityGrid();
+  renderDifficultyGrid();
+
+  $('#btn-start').addEventListener('click', () => { SFX.select(); showView('view-character'); });
+  $('#btn-howto').addEventListener('click', () => { SFX.select(); showView('view-howto'); });
+  $('#btn-howto-back').addEventListener('click', () => { SFX.back(); showView('view-title'); });
+
+  $('#btn-char-back').addEventListener('click', () => { SFX.back(); showView('view-title'); });
+  $('#btn-char-next').addEventListener('click', () => { SFX.select(); showView('view-city'); });
+
+  $('#btn-city-back').addEventListener('click', () => { SFX.back(); showView('view-character'); });
+  $('#btn-city-next').addEventListener('click', () => { SFX.select(); showView('view-difficulty'); });
+
+  $('#btn-diff-back').addEventListener('click', () => { SFX.back(); showView('view-city'); });
+  $('#btn-diff-next').addEventListener('click', () => {
+    SFX.select();
+    renderBriefing();
+    showView('view-briefing');
+  });
+
+  $('#btn-brief-back').addEventListener('click', () => { SFX.back(); showView('view-difficulty'); });
+  $('#btn-launch').addEventListener('click', () => { SFX.select(); startGame(); });
+
+  $('#btn-win-again').addEventListener('click', () => { SFX.select(); resetSelections(); showView('view-title'); });
+  $('#btn-lose-again').addEventListener('click', () => { SFX.select(); showView('view-briefing'); renderBriefing(); });
+
+  $('#btn-win-screenshot').addEventListener('click', () => captureAndDownload(true));
+  $('#btn-lose-screenshot').addEventListener('click', () => captureAndDownload(false));
+  $('#btn-win-share').addEventListener('click', () => shareResult(true));
+  $('#btn-lose-share').addEventListener('click', () => shareResult(false));
+
+  $('#mute-btn').addEventListener('click', () => {
+    const muted = !SFX.isMuted();
+    SFX.setMuted(muted);
+    $('#mute-btn').textContent = muted ? '🔇' : '🔊';
+  });
+
+  // Desbloquear audio en la primera interacción (requisito de navegadores)
+  document.body.addEventListener('click', () => {
+    if (window.AudioContext || window.webkitAudioContext) {
+      try { SFX.move(); } catch(e){}
+    }
+  }, { once: true });
+}
+
+function resetSelections(){
+  state.character = null;
+  state.city = null;
+  state.difficulty = null;
+  $all('.card').forEach(c => c.classList.remove('selected'));
+  $('#btn-char-next').disabled = true;
+  $('#btn-city-next').disabled = true;
+  $('#btn-diff-next').disabled = true;
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+</script>
+</body>
+</html>
